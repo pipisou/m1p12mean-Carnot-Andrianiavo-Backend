@@ -1,0 +1,109 @@
+
+### **Profil Client**  
+1. **S'inscrire**  
+   - Formulaire d'inscription avec nom, prénom, e-mail, numéro de téléphone et mot de passe.  
+     
+
+2. **Se connecter**  
+   - Authentification avec e-mail et mot de passe.  
+
+
+3. **Modifier profil**  
+   - Mise à jour des informations personnelles (nom, numéro de téléphone, adresse, etc.).  
+   - Modification du mot de passe.  
+
+4. **Prendre rendez-vous**  
+   - Sélection d’un service ou plusieurs service (révision, vidange, réparation, etc.).  
+   - Choix de la date et de l’heure en fonction des disponibilités.  
+   - Possibilité de laisser une note pour préciser le problème du véhicule.  
+   - Confirmation du rendez-vous par e-mail et notification.  
+
+5. **Consulter l'historique**  
+   - Liste des anciens rendez-vous et services réalisés sur le véhicule.  
+   - Détail des réparations effectuées et coût associé.  
+
+6. **Recevoir des notifications**  
+   - Rappel de rendez-vous.  
+   - Mise à jour de l’état des réparations.  
+ 
+
+---
+
+### **Profil Manager**  
+1. **Ajouter un mécanicien**  
+   - Création d’un compte mécanicien avec nom, prénom, e-mail, téléphone et mot de passe,salaire.  
+   - Affectation des spécialités (ex. : électricité, moteur, carrosserie).  
+   
+
+2. **Gérer le service**  
+   - Liste des services proposés par le garage.  
+   - Ajout, modification ou suppression de services (ex. : révision, vidange, etc.).  
+   - Définition des prix et des durées estimées des services.  
+
+3. **Gérer le stock**  
+   - Liste des pièces disponibles avec quantité et prix unitaire, prix d achat et prix de vente  
+   - Ajout et suppression d’articles.  
+   - Alertes de stock faible pour anticiper les commandes.  
+
+4. **Valider un rendez-vous en assignant un mécanicien**  
+   - Consultation des rendez-vous en attente.  
+   - Attribution d’un mécanicien en fonction de sa disponibilité et spécialité.  
+   - Envoi d’une notification au client et au mécanicien.  
+
+5. **Facturer le client**  
+   - Génération d’une facture avec détails des prestations et coûts.  
+   - Option d’envoi de la facture par e-mail ou téléchargement en PDF.  
+
+6. **Indiquer payer**  
+   - Mise à jour du statut de la facture en "payée" après réception du paiement.  
+
+
+7. **Consulter l'historique**  
+   - Liste des anciens rendez-vous avec détails (services réalisés, mécanicien assigné, montant payé).  
+   - Suivi des paiements effectués et en attente.  
+
+8. **Recevoir des notifications**  
+   - Alertes sur les nouvelles demandes de rendez-vous.  
+   - Rappels des stocks faibles.  
+   - Mises à jour de l’état des réparations.  
+
+---
+
+### **Profil Mécanicien**  
+1. **Se connecter**  
+   - Authentification avec e-mail et mot de passe.  
+   - Option de récupération du mot de passe.  
+
+2. **Modifier profil**  
+   - Mise à jour des informations personnelles.  
+   - Modification du mot de passe.  
+
+3. **Voir son planning**  
+   - Liste des rendez-vous assignés.  
+   - Détails du véhicule et du problème signalé.  
+   - Heures et dates des interventions.  
+
+4. **Cocher les tâches terminées**  
+   - Liste des réparations à effectuer.  
+   - Possibilité de cocher chaque étape finalisée.  
+
+
+5. **Ajouter les achats de pièces dans le stock**  
+   - Déclaration des pièces utilisées pour la réparation.  
+   - Ajout des nouvelles pièces achetées pour le stock du garage.  
+   - Mise à jour automatique des quantités disponibles.  
+
+6. **Valider "Terminé" quand c’est fini**  
+   - Confirmation de la fin des réparations.  
+   - Envoi automatique d’une notification au client et au manager.  
+
+7. **Consulter l'historique**  
+   - Liste des interventions passées avec détails (véhicule, client, service rendu).  
+  
+8. **Recevoir des notifications**  
+   - Nouveaux rendez-vous assignés.  
+   - Rappels sur les tâches en attente.  
+   - Alertes en cas de modification d’un rendez-vous.  
+
+---
+

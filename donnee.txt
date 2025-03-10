@@ -1,0 +1,160 @@
+1. Client 
+{
+  "nom": "Dupont",
+  "prenom": "Jean",
+  "email": "carnotrandriamiandravola@gmail.com",
+  "telephone": "0612345678",
+  "motDePasse": "password123"
+}
+
+2. Mecanicen
+
+{
+"specialites": ["67ca79ab110b689f148bdee6"],
+  "nom": "Lemoine",
+  "prenom": "Pierre",
+  "salaire": 3000,
+  "email": "jijicarl5@gmail.com",
+  "telephone": "0609876543",
+  "motDePasse": "password123"
+}
+
+3. Manager
+
+{
+  "nom": "manager",
+  "email": "kelymau13@gmail.com",
+  "motDePasse": "password123"
+}
+
+
+4. Specialite
+
+{
+  "typeSpecialite": "Électricité automobile"
+}
+
+{
+  "typeSpecialite": "Carrosserie"
+}
+
+{
+  "typeSpecialite": "Moteur"
+}
+
+{
+  "typeSpecialite": "Transmission"
+}
+
+{
+  "typeSpecialite": "Freinage"
+}
+
+5. Service
+ {
+    "nomService": "Entretien courant",
+    "description": "Révision complète du véhicule, vérification des principaux systèmes.",
+    "specialites": ["67ca79bd110b689f148bdee9", "67ca79ab110b689f148bdee6", "67ca79e1110b689f148bdeef", "67ca79ed110b689f148bdef2"],
+    "prix": 100,
+    "tempsEstime": 2
+  }
+
+
+  {
+    "nomService": "Réparation moteur",
+    "description": "Diagnostic et réparation des pannes moteur.",
+    "specialites": ["67ca79ab110b689f148bdee6"],
+    "prix": 250,
+    "tempsEstime": 5
+  }
+
+
+  {
+    "nomService": "Carrosserie",
+    "description": "Réparation des bosses, peinture et entretien de la carrosserie.",
+    "specialites": ["67ca79cd110b689f148bdeec"],
+    "prix": 150,
+    "tempsEstime": 3
+  }
+
+  {
+    "nomService": "Diagnostic complet",
+    "description": "Diagnostic des systèmes électroniques, moteur, et autres.",
+    "specialites": ["67ca79bd110b689f148bdee9", "67ca79ab110b689f148bdee6", "67ca79e1110b689f148bdeef", "67ca79ed110b689f148bdef2"],
+    "prix": 50,
+    "tempsEstime": 1
+  }
+
+  {
+    "nomService": "Réparation du freinage",
+    "description": "Réparation des systèmes de freinage et remplacement des pièces usées.",
+    "specialites": ["67ca79ed110b689f148bdef2"],
+    "prix": 200,
+    "tempsEstime": 4
+  }
+
+
+6. Categorie
+
+{
+  "nomCategorie": "Moteur"
+}
+
+{
+  "nomCategorie": "Transmission"
+}
+
+{
+  "nomCategorie": "Freinage"
+}
+
+
+
+{
+  "nomCategorie": "Autre"
+}
+
+
+7. Article
+
+{
+  "nomArticle": "Batterie automobile",
+  "categorie": "67cdcdd46a238dce042d14a0"
+}
+
+
+{
+  "nomArticle": "Alternateur",
+  "categorie": "67cdcde76a238dce042d14a3"
+}
+
+
+{
+  "nomArticle": "Liquide de frein",
+  "categorie": "67cdcdf36a238dce042d14a6"
+}
+
+
+
+
+
+8. Stock
+
+{
+  "article": "67cdce976a238dce042d14af",
+  "quantite": 120,
+  "prixVente": 20,
+  "prixAchat": 12,
+  "fournisseur": "Fournisseur O",
+  "dateAchat": "2024-03-08T00:00:00.000Z"
+}
+
+{
+  "article": "67cdce976a238dce042d14af",
+  "quantite": 80,
+  "prixVente": 15,
+  "prixAchat": 10,
+  "fournisseur": "Fournisseur L",
+  "dateAchat": "2024-03-07T00:00:00.000Z"
+}
+
