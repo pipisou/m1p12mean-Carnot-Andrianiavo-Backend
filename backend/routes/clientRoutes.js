@@ -3,8 +3,9 @@ const router = express.Router();
 const Client = require('../models/Client');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const authMiddleware = require('../middlewares/authMiddleware');
 
-// Inscription (Créer un client)
+// Route d'inscription - Pas besoin de token
 router.post('/register', async (req, res) => {
     try {
         const { nom, prenom, email, telephone, motDePasse } = req.body;
@@ -28,7 +29,7 @@ router.post('/register', async (req, res) => {
     }
 });
 
-// Connexion
+// Route de connexion - Pas besoin de token
 router.post('/login', async (req, res) => {
     try {
         const { email, motDePasse } = req.body;
@@ -46,7 +47,7 @@ router.post('/login', async (req, res) => {
         }
 
         // Générer un token JWT
-        const token = jwt.sign({ id: client._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
+        const token = jwt.sign({ id: client._id }, process.env.JWT_SECRET, { expiresIn: "8h" });
 
         res.json({ message: "Connexion réussie", token, client });
     } catch (err) {
@@ -54,7 +55,20 @@ router.post('/login', async (req, res) => {
     }
 });
 
-// Récupérer tous les clients
+// Route protégée - Nécessite un token
+router.get('/me', authMiddleware, async (req, res) => {
+    try {
+        const client = await Client.findById(req.user.id).select('-motDePasse'); // Exclure le mot de passe
+        if (!client) {
+            return res.status(404).json({ error: "Utilisateur non trouvé" });
+        }
+        res.json(client);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Récupérer tous les clients - Pas besoin de token
 router.get('/', async (req, res) => {
     try {
         const clients = await Client.find();
@@ -64,7 +78,7 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Récupérer un client par ID
+// Récupérer un client par ID - Pas besoin de token
 router.get('/:id', async (req, res) => {
     try {
         const client = await Client.findById(req.params.id);
@@ -76,8 +90,8 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// Modifier un client
-router.put('/:id', async (req, res) => {
+// Modifier un client - Nécessite un token
+router.put('/:id', authMiddleware, async (req, res) => {
     try {
         const { nom, prenom, email, telephone, motDePasse } = req.body;
 
@@ -101,7 +115,8 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// Supprimer un client
+// Supprimer un client - Nécessite un token
+// Supprimer un client - Pas besoin de token
 router.delete('/:id', async (req, res) => {
     try {
         const client = await Client.findById(req.params.id);
@@ -113,5 +128,6 @@ router.delete('/:id', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
 
 module.exports = router;
