@@ -18,6 +18,10 @@ mongoose.connect(process.env.MONGO_URI, {
 });
 
    // Routes 
+   app.get('/', (req, res) => {
+    res.send('ping');
+  });
+  
 app.use('/client', require('./routes/clientRoutes')); 
 app.use('/manager', require('./routes/managerRoutes'));
 app.use('/mecanicien', require('./routes/mecanicienRoutes')); 
@@ -27,7 +31,8 @@ app.use('/service', require('./routes/serviceRoutes'));
 app.use('/article', require('./routes/articleRoutes'));
 app.use('/stock', require('./routes/stockRoutes'));
 app.use('/rendezVous', require('./routes/rendezVousRoutes'));
-
+app.use('/horaire', require('./routes/horaireRoutes'));
+app.use('/absence', require('./routes/absenceRoutes'));
 
 app.listen(PORT, () => console.log(`Serveur démarré sur le port 
 ${PORT}`));
