@@ -3,7 +3,7 @@ const router = express.Router();
 const Client = require('../models/Client');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const authMiddleware = require('../middlewares/authMiddleware');
+const { authClientMiddleware, authManagerMiddleware } = require('../middlewares/authMiddleware'); // Importation des middlewares
 
 // Route d'inscription - Pas besoin de token
 router.post('/register', async (req, res) => {
@@ -55,8 +55,8 @@ router.post('/login', async (req, res) => {
     }
 });
 
-// Route protégée - Nécessite un token
-router.get('/me', authMiddleware, async (req, res) => {
+// Route protégée - Nécessite un token client
+router.get('/me', authClientMiddleware, async (req, res) => {
     try {
         const client = await Client.findById(req.user.id).select('-motDePasse'); // Exclure le mot de passe
         if (!client) {
@@ -90,8 +90,8 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// Modifier un client - Nécessite un token
-router.put('/:id', authMiddleware, async (req, res) => {
+// Modifier un client - Nécessite un token client
+router.put('/:id', authClientMiddleware, async (req, res) => {
     try {
         const { nom, prenom, email, telephone, motDePasse } = req.body;
 
@@ -115,9 +115,8 @@ router.put('/:id', authMiddleware, async (req, res) => {
     }
 });
 
-// Supprimer un client - Nécessite un token
-// Supprimer un client - Pas besoin de token
-router.delete('/:id', async (req, res) => {
+// Route pour supprimer un client, seulement pour les managers
+router.delete('/:id', authManagerMiddleware, async (req, res) => {
     try {
         const client = await Client.findById(req.params.id);
         if (!client) return res.status(404).json({ error: "Client non trouvé" });

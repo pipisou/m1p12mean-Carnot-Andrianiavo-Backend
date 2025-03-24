@@ -31,8 +31,13 @@ app.use('/service', require('./routes/serviceRoutes'));
 app.use('/article', require('./routes/articleRoutes'));
 app.use('/stock', require('./routes/stockRoutes'));
 app.use('/rendezVous', require('./routes/rendezVousRoutes'));
+app.use('/devis', require('./routes/devisRoutes'));
+app.use('/taches', require('./routes/tacheRoutes'));
+app.use('/vehicule', require('./routes/vehiculeRoutes'));
 app.use('/horaire', require('./routes/horaireRoutes'));
 app.use('/absence', require('./routes/absenceRoutes'));
+app.use('/categorieDeVehicule', require('./routes/categorieDeVehiculeRoutes'));
+app.use('/service-details', require('./routes/serviceDetailsRoutes'));
 
 app.listen(PORT, () => console.log(`Serveur démarré sur le port 
 ${PORT}`));
