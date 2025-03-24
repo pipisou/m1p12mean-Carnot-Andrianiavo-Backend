@@ -3,6 +3,16 @@ const router = express.Router();
 const Vehicule = require('../models/Vehicule');
 const { authClientMiddleware, authManagerMiddleware } = require('../middlewares/authMiddleware');
 
+// Récupérer tous les véhicules du client - Nécessite un token client
+router.get('/client', authClientMiddleware, async (req, res) => {
+    try {
+        const vehicules = await Vehicule.find({ proprietaire: req.user.id }).populate('categorie');
+        res.json(vehicules);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Ajouter un véhicule - Nécessite un token client
 router.post('/', authClientMiddleware, async (req, res) => {
     try {
@@ -45,21 +55,6 @@ router.get('/:id', async (req, res) => {
         if (!vehicule) return res.status(404).json({ error: "Véhicule non trouvé" });
 
         res.json(vehicule);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Récupérer tous les véhicules du client - Nécessite un token client
-router.get('/client', authClientMiddleware, async (req, res) => {
-    try {
-        const vehicules = await Vehicule.find({ proprietaire: req.user.id }).populate('categorie');
-
-        if (!vehicules || vehicules.length === 0) {
-            return res.status(404).json({ error: "Aucun véhicule trouvé pour ce client." });
-        }
-
-        res.json(vehicules);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
