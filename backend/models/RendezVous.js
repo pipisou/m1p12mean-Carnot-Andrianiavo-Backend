@@ -1,25 +1,63 @@
 const mongoose = require('mongoose');
 
 const rendezVousSchema = new mongoose.Schema({
-    client: { type: mongoose.Schema.Types.ObjectId, ref: 'Client', required: true },
-    dateHeure: { type: Date, required: true },
-    heureFin: { type: Date, required: true },
-    services: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Service', required: true }],
-    etat: { type: String, enum: ['En attente', 'Confirmé', 'Terminé'], default: 'En attente' },
-    mecaniciens: [{
-        mecanicienId: { type: mongoose.Schema.Types.ObjectId, ref: 'Mecanicien', required: true },
-        servicesEffectues: [{
-            serviceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Service', required: true },
-            heureDebut: { type: Date, required: true },  // Heure de début du service
-            heureFin: { type: Date, required: true }     // Heure de fin du service
-        }]
-    }],
-    articlesUtilises: [
+    client: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'Client', 
+        required: true 
+    },
+    devis: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Devis',
+        required: true
+    },
+    taches: [
         {
-            article: { type: mongoose.Schema.Types.ObjectId, ref: 'Stock', required: false },
-            quantite: { type: Number, required: false }
+            tache: { 
+                type: mongoose.Schema.Types.ObjectId, 
+                ref: 'Tache', 
+                required: true 
+            },
+            mecanicien: { 
+                type: mongoose.Schema.Types.ObjectId, 
+                ref: 'Mecanicien', 
+                required: true 
+            },
+            statut: { 
+                type: String, 
+                enum: ['en attent','en cours', 'terminée'], 
+                default: 'en cours'
+            },
+            // Date et heure de l'intervention du mécanicien sur cette tâche
+            dateHeureIntervention: { 
+                type: Date, 
+                required: true 
+            },
+            articlesUtilises: [
+                {
+                    article: { 
+                        type: mongoose.Schema.Types.ObjectId, 
+                        ref: 'Stock', 
+                        required: false
+                    },
+                    quantite: { 
+                        type: Number, 
+                        required: false 
+                    }
+                }
+            ],
         }
-    ]
+    ],
+    // Date et heure du rendez-vous global
+    dateHeureDebutRendezVous: { 
+        type: Date, 
+        required: true 
+    },
+    statut: {
+        type: String,
+        enum: ['en attente', 'validé', 'refusé'],
+        default: 'en attente'
+    }
 }, { timestamps: true });
 
 module.exports = mongoose.model('RendezVous', rendezVousSchema);

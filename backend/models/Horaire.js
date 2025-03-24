@@ -9,8 +9,12 @@ const horaireSchema = new mongoose.Schema({
                 enum: ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'], 
                 required: true 
             },
-            debut: { type: String, required: true }, // Heure de début
-            fin: { type: String, required: true } // Heure de fin
+            debut: { type: String, required: true }, // Heure de début du travail
+            fin: { type: String, required: true }, // Heure de fin du travail
+            pause: {
+                debut: { type: String }, // Heure de début de la pause (optionnelle)
+                fin: { type: String } // Heure de fin de la pause (optionnelle)
+            }
         }
     ],
     dateDebut: { type: Date, default: Date.now } // Date d'entrée en vigueur de l'horaire
