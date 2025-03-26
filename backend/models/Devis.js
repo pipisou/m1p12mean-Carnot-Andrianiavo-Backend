@@ -12,6 +12,13 @@ const devisSchema = new mongoose.Schema({
         ref: 'Client', 
         required: false // Le client est facultatif, peut être null si créé par un administrateur
     },
+
+    vehicule: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'Vehicule', // Référence au modèle Vehicule
+        required: true  // Le véhicule est requis pour chaque devis
+    },
+
     taches: [{ 
         type: mongoose.Schema.Types.ObjectId, 
         ref: 'Tache', 

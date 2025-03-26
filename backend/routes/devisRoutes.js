@@ -3,14 +3,14 @@ const Devis = require('../models/Devis');
 const Tache = require('../models/Tache');
 const RendezVous = require('../models/RendezVous');
 const generateDevisReference = require('../models/generateDevisReference');
-const { authMiddleware,authClientMiddleware} = require('../middlewares/authMiddleware');
+const { authMiddleware, authClientMiddleware } = require('../middlewares/authMiddleware');
 
 const router = express.Router();
 
 // ✅ Création d'un devis (CLIENT UNIQUEMENT)
 router.post('/', authClientMiddleware, async (req, res) => {
     try {
-        const { taches, dateDemande } = req.body;  // Ajout de dateDemande dans le corps de la requête
+        const { taches, dateDemande, vehicule } = req.body;  // Ajout de 'vehicule' et 'dateDemande'
 
         if (!Array.isArray(taches) || taches.length === 0) {
             return res.status(400).json({ message: 'Une liste de tâches est requise' });
@@ -23,15 +23,17 @@ router.post('/', authClientMiddleware, async (req, res) => {
 
         const referenceDevis = await generateDevisReference();
 
+        // Créer le devis
         const devis = new Devis({
             referenceDevis,
             client: req.user.id,
-            taches
+            taches,
+            vehicule  // Ajouter l'ID du véhicule au devis
         });
 
         await devis.save();  // Enregistrer le devis
 
-        // Une fois le devis créé, créer un rendez-vous avec statut "en attente"
+        // Créer un rendez-vous avec statut "en attente"
         const rendezVous = new RendezVous({
             client: req.user.id,
             devis: devis._id,  // Utiliser l'ID du devis créé
@@ -53,13 +55,13 @@ router.post('/', authClientMiddleware, async (req, res) => {
     }
 });
 
-
 // ✅ Récupérer tous les devis (AUTHENTIFICATION REQUISE)
 router.get('/', authMiddleware, async (req, res) => {
     try {
         const devis = await Devis.find()
             .populate('client')
-            .populate('taches');
+            .populate('taches')
+            .populate('vehicule');  // Peupler aussi le véhicule lié au devis
 
         res.json(devis);
     } catch (error) {
@@ -72,7 +74,8 @@ router.get('/:id', authMiddleware, async (req, res) => {
     try {
         const devis = await Devis.findById(req.params.id)
             .populate('client')
-            .populate('taches');
+            .populate('taches')
+            .populate('vehicule');  // Peupler le véhicule lié au devis
 
         if (!devis) return res.status(404).json({ message: 'Devis non trouvé' });
 
@@ -85,7 +88,7 @@ router.get('/:id', authMiddleware, async (req, res) => {
 // ✅ Mettre à jour un devis (AUTHENTIFICATION REQUISE)
 router.put('/:id', authMiddleware, async (req, res) => {
     try {
-        const { taches } = req.body;
+        const { taches, vehicule } = req.body;
 
         if (!Array.isArray(taches) || taches.length === 0) {
             return res.status(400).json({ message: 'Une liste de tâches est requise' });
@@ -95,6 +98,10 @@ router.put('/:id', authMiddleware, async (req, res) => {
         if (!devis) return res.status(404).json({ message: 'Devis non trouvé' });
 
         devis.taches = taches;
+        if (vehicule) {
+            devis.vehicule = vehicule;  // Mettre à jour le véhicule si un nouvel ID est fourni
+        }
+
         await devis.save();
 
         res.json({ message: 'Devis mis à jour avec succès', devis });
@@ -115,12 +122,14 @@ router.delete('/:id', authMiddleware, async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 });
+
 // ✅ Récupérer tous les devis d'un client (CLIENT UNIQUEMENT)
 router.get('/client', authClientMiddleware, async (req, res) => {
     try {
         const devis = await Devis.find({ client: req.user.id })
-        .populate('client')
-        .populate('taches');
+            .populate('client')
+            .populate('taches')
+            .populate('vehicule');  // Peupler aussi le véhicule lié au devis
 
         res.json(devis);
     } catch (error) {
