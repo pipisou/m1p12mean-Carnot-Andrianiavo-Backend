@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Vehicule = require('../models/Vehicule');
-const { authClientMiddleware, authManagerMiddleware } = require('../middlewares/authMiddleware');
+const { authClientMiddleware} = require('../middlewares/authMiddleware');
 
 // Récupérer tous les véhicules du client - Nécessite un token client
 router.get('/client', authClientMiddleware, async (req, res) => {
@@ -88,7 +88,7 @@ router.put('/:id', authClientMiddleware, async (req, res) => {
 });
 
 // Supprimer un véhicule - Seulement pour les managers
-router.delete('/:id', authManagerMiddleware, async (req, res) => {
+router.delete('/:id', authClientMiddleware, async (req, res) => {
     try {
         const vehicule = await Vehicule.findById(req.params.id);
         if (!vehicule) return res.status(404).json({ error: "Véhicule non trouvé" });
