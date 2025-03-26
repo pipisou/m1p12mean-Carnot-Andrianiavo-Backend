@@ -11,51 +11,62 @@ const rendezVousSchema = new mongoose.Schema({
         ref: 'Devis',
         required: true
     },
-    taches: [
-        {
-            tache: { 
-                type: mongoose.Schema.Types.ObjectId, 
-                ref: 'Tache', 
-                required: true 
-            },
+    mecaniciens: [
+        { 
             mecanicien: { 
                 type: mongoose.Schema.Types.ObjectId, 
                 ref: 'Mecanicien', 
                 required: true 
             },
-            statut: { 
-                type: String, 
-                enum: ['en attent','en cours', 'terminée'], 
-                default: 'en cours'
-            },
-            // Date et heure de l'intervention du mécanicien sur cette tâche
-            dateHeureIntervention: { 
-                type: Date, 
-                required: true 
-            },
-            articlesUtilises: [
+            services: [
                 {
-                    article: { 
+                    service: { 
                         type: mongoose.Schema.Types.ObjectId, 
-                        ref: 'Stock', 
-                        required: false
+                        ref: 'Service', 
+                        required: true 
                     },
-                    quantite: { 
-                        type: Number, 
-                        required: false 
+                    dateHeureDebut: { 
+                        type: Date, 
+                        required: true 
+                    },
+                    dateHeureFin: { 
+                        type: Date, 
+                        required: true 
                     }
                 }
-            ],
+            ]
         }
     ],
-    // Date et heure du rendez-vous global
-    dateHeureDebutRendezVous: { 
-        type: Date, 
-        required: true 
+
+    // Date demandée par le client entre deux dates
+    dateDemande: {
+        type: [Date],
+        required: true  // Le client choisit une plage de dates
     },
+
+    // Date validée par le manager
+    dateChoisie: {
+        type: Date,
+        required: false  // La date choisie sera validée plus tard par le manager
+    },
+
+    articlesUtilises: [
+        {
+            article: { 
+                type: mongoose.Schema.Types.ObjectId, 
+                ref: 'Stock', 
+                required: false
+            },
+            quantite: { 
+                type: Number, 
+                required: false
+            }
+        }
+    ],
+
     statut: {
         type: String,
-        enum: ['en attente', 'validé', 'refusé'],
+        enum: ['en attente','demande de validtion', 'reprogrammé intervale','reprogrammé dateChoisie','validé', 'en cours', 'terminée', 'payé'],
         default: 'en attente'
     }
 }, { timestamps: true });

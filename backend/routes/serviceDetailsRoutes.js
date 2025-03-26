@@ -132,7 +132,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // ✅ Récupérer toutes les tâches d'un ServiceDetails spécifique (GET)
-router.get('/alltaches/:id', async (req, res) => {
+router.get('/alltaches/:id',  authMiddleware, async (req, res) => {
     try {
         const { id } = req.params;
 
