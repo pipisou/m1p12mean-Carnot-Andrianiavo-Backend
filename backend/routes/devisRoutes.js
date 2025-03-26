@@ -7,13 +7,13 @@ const generateDevisReference = require('../models/generateDevisReference');
 
 const router = express.Router();
 
-// ✅ Création d'un devis (POST)
+// ✅ Création d'un devis avec services uniquement (sans tâches)
 router.post('/', async (req, res) => {
     try {
         const { description, client, serviceDetails } = req.body;
 
         if (!description || !serviceDetails || !Array.isArray(serviceDetails) || serviceDetails.length === 0) {
-            return res.status(400).json({ message: 'La description et au moins un serviceDetails sont requis' });
+            return res.status(400).json({ message: 'La description et au moins un service sont requis' });
         }
 
         if (client) {
@@ -23,16 +23,10 @@ router.post('/', async (req, res) => {
             }
         }
 
-        // Vérification des services et tâches associées
         for (const service of serviceDetails) {
             const serviceExist = await ServiceDetails.findById(service.service);
             if (!serviceExist) {
                 return res.status(400).json({ message: `ServiceDetails non valide pour l'ID ${service.service}` });
-            }
-
-            const tachesExist = await Tache.find({ _id: { $in: service.taches } });
-            if (tachesExist.length !== service.taches.length) {
-                return res.status(400).json({ message: `Une ou plusieurs tâches sont invalides pour le service ${service.service}` });
             }
         }
 
@@ -42,67 +36,84 @@ router.post('/', async (req, res) => {
             referenceDevis,
             description,
             client,
-            serviceDetails,
+            serviceDetails: serviceDetails.map(s => ({ service: s.service, taches: [] }))
         });
 
         await devis.save();
-        res.status(201).json({ message: 'Devis créé avec succès', devis });
+        res.status(201).json({ message: 'Devis créé avec succès, ajoutez maintenant les tâches', devis });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 });
 
-// ✅ Récupérer tous les devis (GET)
-router.get('/', async (req, res) => {
+// ✅ Ajout de tâches à un service dans un devis existant
+router.put('/addTaches/:devisId/:serviceId', async (req, res) => {
     try {
-        const devis = await Devis.find()
-            .populate('client')
-            .populate({
-                path: 'serviceDetails.service',
-                model: 'ServiceDetails'
-            })
-            .populate({
-                path: 'serviceDetails.taches',
-                model: 'Tache'
-            });
+        const { devisId, serviceId } = req.params;
+        const { taches } = req.body;
 
-        res.json(devis);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-});
+        if (!Array.isArray(taches) || taches.length === 0) {
+            return res.status(400).json({ message: 'Liste de tâches requise' });
+        }
 
-// ✅ Récupérer un devis par son ID (GET)
-router.get('/:id', async (req, res) => {
-    try {
-        const devis = await Devis.findById(req.params.id)
-            .populate('client')
-            .populate({
-                path: 'serviceDetails.service',
-                model: 'ServiceDetails'
-            })
-            .populate({
-                path: 'serviceDetails.taches',
-                model: 'Tache'
-            });
-
+        const devis = await Devis.findById(devisId);
         if (!devis) {
             return res.status(404).json({ message: 'Devis non trouvé' });
         }
 
+        const serviceIndex = devis.serviceDetails.findIndex(s => s.service.toString() === serviceId);
+        if (serviceIndex === -1) {
+            return res.status(404).json({ message: 'ServiceDetails non trouvé dans ce devis' });
+        }
+
+        const tachesExistantes = await Tache.find({ _id: { $in: taches } });
+        if (tachesExistantes.length !== taches.length) {
+            return res.status(400).json({ message: 'Une ou plusieurs tâches sont invalides' });
+        }
+
+        devis.serviceDetails[serviceIndex].taches.push(...taches);
+        await devis.save();
+
+        res.json({ message: 'Tâches ajoutées avec succès', devis });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// ✅ Récupérer tous les devis
+router.get('/', async (req, res) => {
+    try {
+        const devis = await Devis.find()
+            .populate('client')
+            .populate('serviceDetails.service')
+            .populate('serviceDetails.taches');
         res.json(devis);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 });
 
-// ✅ Mise à jour d'un devis (PUT)
+// ✅ Récupérer un devis par son ID
+router.get('/:id', async (req, res) => {
+    try {
+        const devis = await Devis.findById(req.params.id)
+            .populate('client')
+            .populate('serviceDetails.service')
+            .populate('serviceDetails.taches');
+        if (!devis) return res.status(404).json({ message: 'Devis non trouvé' });
+        res.json(devis);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// ✅ Mise à jour d'un devis (description et services, sans tâches)
 router.put('/:id', async (req, res) => {
     try {
         const { description, client, serviceDetails } = req.body;
 
         if (!description || !serviceDetails || !Array.isArray(serviceDetails) || serviceDetails.length === 0) {
-            return res.status(400).json({ message: 'La description et au moins un serviceDetails sont requis' });
+            return res.status(400).json({ message: 'La description et au moins un service sont requis' });
         }
 
         if (client) {
@@ -117,27 +128,16 @@ router.put('/:id', async (req, res) => {
             if (!serviceExist) {
                 return res.status(400).json({ message: `ServiceDetails non valide pour l'ID ${service.service}` });
             }
-
-            const tachesExist = await Tache.find({ _id: { $in: service.taches } });
-            if (tachesExist.length !== service.taches.length) {
-                return res.status(400).json({ message: `Une ou plusieurs tâches sont invalides pour le service ${service.service}` });
-            }
         }
 
         const devis = await Devis.findByIdAndUpdate(
             req.params.id,
-            { description, client, serviceDetails },
+            { description, client, serviceDetails: serviceDetails.map(s => ({ service: s.service, taches: [] })) },
             { new: true }
         )
         .populate('client')
-        .populate({
-            path: 'serviceDetails.service',
-            model: 'ServiceDetails'
-        })
-        .populate({
-            path: 'serviceDetails.taches',
-            model: 'Tache'
-        });
+        .populate('serviceDetails.service')
+        .populate('serviceDetails.taches');
 
         if (!devis) return res.status(404).json({ message: 'Devis non trouvé' });
 
@@ -147,42 +147,12 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// ✅ Suppression d'un devis (DELETE)
+// ✅ Suppression d'un devis
 router.delete('/:id', async (req, res) => {
     try {
         const devis = await Devis.findByIdAndDelete(req.params.id);
-        if (!devis) {
-            return res.status(404).json({ message: 'Devis non trouvé' });
-        }
+        if (!devis) return res.status(404).json({ message: 'Devis non trouvé' });
         res.json({ message: 'Devis supprimé avec succès' });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-});
-
-// ✅ Récupérer tous les devis sans client pour un serviceDetails donné
-router.get('/getalldevisServicedetails/:id', async (req, res) => {
-    try {
-        const serviceDetailsId = req.params.id;
-
-        const devis = await Devis.find({
-            'serviceDetails.service': serviceDetailsId,
-            client: null
-        })
-        .populate({
-            path: 'serviceDetails.service',
-            model: 'ServiceDetails'
-        })
-        .populate({
-            path: 'serviceDetails.taches',
-            model: 'Tache'
-        });
-
-        if (devis.length === 0) {
-            return res.status(404).json({ message: 'Aucun devis trouvé pour ce serviceDetails sans client' });
-        }
-
-        res.json(devis);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
