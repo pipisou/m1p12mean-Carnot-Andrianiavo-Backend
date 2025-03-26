@@ -3,6 +3,7 @@ const ServiceDetails = require('../models/ServiceDetails');
 const Service = require('../models/Service');
 const CategorieDeVehicule = require('../models/CategorieDeVehicule');
 const Tache = require('../models/Tache');
+const { authClientMiddleware, authManagerMiddleware,authMiddleware } = require('../middlewares/authMiddleware'); // Importation des middlewares
 
 const router = express.Router();
 
@@ -151,7 +152,7 @@ router.get('/alltaches/:id', async (req, res) => {
 });
 
 // ✅ Récupérer les ServiceDetails par catégorie de véhicule (GET)
-router.get('/categorie/:categorieId', async (req, res) => {
+router.get('/categorie/:categorieId', authMiddleware, async (req, res) => {
     try {
         const serviceDetails = await ServiceDetails.find({ categorieDeVehicule: req.params.categorieId })
             .populate('service')
@@ -163,5 +164,6 @@ router.get('/categorie/:categorieId', async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 });
+
 
 module.exports = router;
