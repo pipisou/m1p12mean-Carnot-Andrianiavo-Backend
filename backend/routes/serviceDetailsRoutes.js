@@ -1,6 +1,3 @@
-
-
-// ✅ Récupérer tous les détails des services (GET)
 const express = require('express');
 const ServiceDetails = require('../models/ServiceDetails');
 const Service = require('../models/Service');
@@ -43,8 +40,6 @@ router.get('/', async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 });
-
-
 
 // ✅ Récupérer un service spécifique (GET)
 router.get('/:id', async (req, res) => {
@@ -155,7 +150,18 @@ router.get('/alltaches/:id', async (req, res) => {
     }
 });
 
+// ✅ Récupérer les ServiceDetails par catégorie de véhicule (GET)
+router.get('/categorie/:categorieId', async (req, res) => {
+    try {
+        const serviceDetails = await ServiceDetails.find({ categorieDeVehicule: req.params.categorieId })
+            .populate('service')
+            .populate('categorieDeVehicule')
+            .populate('servicePrerequis');
+
+        res.json(serviceDetails);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 module.exports = router;
-
-
-
