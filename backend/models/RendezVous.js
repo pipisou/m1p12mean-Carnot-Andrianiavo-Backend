@@ -11,6 +11,8 @@ const rendezVousSchema = new mongoose.Schema({
         ref: 'Devis',
         required: true
     },
+
+    // Assignation des mécaniciens avec leurs tâches et horaires
     mecaniciens: [
         { 
             mecanicien: { 
@@ -18,11 +20,11 @@ const rendezVousSchema = new mongoose.Schema({
                 ref: 'Mecanicien', 
                 required: true 
             },
-            services: [
+            taches: [
                 {
-                    service: { 
+                    tache: { 
                         type: mongoose.Schema.Types.ObjectId, 
-                        ref: 'Service', 
+                        ref: 'Tache', 
                         required: true 
                     },
                     dateHeureDebut: { 
@@ -38,35 +40,34 @@ const rendezVousSchema = new mongoose.Schema({
         }
     ],
 
-    // Date demandée par le client entre deux dates
-    dateDemande: {
-        type: [Date],
-        required: true  // Le client choisit une plage de dates
-    },
+    // Plage de dates demandée par le client
+    dateDemande: [
+        {
+            dateHeureDebut: { type: Date, required: true },
+            dateHeureFin: { type: Date, required: true }
+        }
+    ],
 
     // Date validée par le manager
     dateChoisie: {
-        type: Date,
-        required: false  // La date choisie sera validée plus tard par le manager
+        type: Date
     },
 
     articlesUtilises: [
         {
             article: { 
                 type: mongoose.Schema.Types.ObjectId, 
-                ref: 'Stock', 
-                required: false
+                ref: 'Stock'
             },
             quantite: { 
-                type: Number, 
-                required: false
+                type: Number 
             }
         }
     ],
 
     statut: {
         type: String,
-        enum: ['en attente','demande de validtion', 'reprogrammé intervale','reprogrammé dateChoisie','validé', 'en cours', 'terminée', 'payé'],
+        enum: ['en attente', 'présent', 'absent', 'payé'],
         default: 'en attente'
     }
 }, { timestamps: true });

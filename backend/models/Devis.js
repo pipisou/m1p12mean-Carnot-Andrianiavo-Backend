@@ -22,7 +22,7 @@ const devisSchema = new mongoose.Schema({
     taches: [{ 
         type: mongoose.Schema.Types.ObjectId, 
         ref: 'Tache', 
-        required: true 
+        required: false 
     }]
 }, { timestamps: true });
 
