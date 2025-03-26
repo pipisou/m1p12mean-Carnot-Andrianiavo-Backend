@@ -5,7 +5,7 @@ const Client = require('../models/Client');
 const Devis = require('../models/Devis');
 const Mecanicien = require('../models/Mecanicien');
 const Stock = require('../models/Stock');
-const { authMiddleware,authClientMiddleware} = require('../middlewares/authMiddleware');
+const { authMiddleware, authClientMiddleware } = require('../middlewares/authMiddleware');
 
 const router = express.Router();
 
@@ -22,7 +22,7 @@ router.post('/', async (req, res) => {
         const devisExist = await Devis.findById(devis);
         if (!devisExist) return res.status(400).json({ message: 'Devis non trouvé' });
 
-        // Créer un rendez-vous avec un statut initial "en attente"
+        // Créer un rendez-vous
         const rendezVous = new RendezVous({
             client,
             devis,
@@ -44,7 +44,7 @@ router.get('/', authMiddleware, async (req, res) => {
             .populate('client')
             .populate('devis')
             .populate('mecaniciens.mecanicien')
-            .populate('mecaniciens.services.service')
+            .populate('mecaniciens.taches.tache')
             .populate('articlesUtilises.article');
 
         res.json(rendezVous);
@@ -53,14 +53,14 @@ router.get('/', authMiddleware, async (req, res) => {
     }
 });
 
-// ✅ Récupérer un rendez-vous spécifique par son ID (GET) - Protégé par authMiddleware
+// ✅ Récupérer un rendez-vous spécifique (GET)
 router.get('/:id', authMiddleware, async (req, res) => {
     try {
         const rendezVous = await RendezVous.findById(req.params.id)
             .populate('client')
             .populate('devis')
             .populate('mecaniciens.mecanicien')
-            .populate('mecaniciens.services.service')
+            .populate('mecaniciens.taches.tache')
             .populate('articlesUtilises.article');
 
         if (!rendezVous) return res.status(404).json({ message: 'Rendez-vous non trouvé' });
@@ -71,7 +71,7 @@ router.get('/:id', authMiddleware, async (req, res) => {
     }
 });
 
-// ✅ Mise à jour d'un rendez-vous (PUT) - Protégé par authMiddleware
+// ✅ Mise à jour d'un rendez-vous (PUT)
 router.put('/:id', authMiddleware, async (req, res) => {
     try {
         const { client, devis, dateDemande, statut, dateChoisie, mecaniciens } = req.body;
@@ -99,7 +99,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
     }
 });
 
-// ✅ Suppression d'un rendez-vous (DELETE) - Protégé par authMiddleware
+// ✅ Suppression d'un rendez-vous (DELETE)
 router.delete('/:id', authMiddleware, async (req, res) => {
     try {
         const rendezVous = await RendezVous.findByIdAndDelete(req.params.id);
@@ -112,13 +112,13 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     }
 });
 
-// ✅ Mise à jour du statut d'un rendez-vous (PUT) - Protégé par authMiddleware
+// ✅ Mise à jour du statut d'un rendez-vous (PUT)
 router.put('/:id/statut', authMiddleware, async (req, res) => {
     try {
         const { statut } = req.body;
 
         // Vérifier si le statut est valide
-        const validStatuts = ['en attente', 'validé', 'en cours', 'terminée', 'payé', 'reprogrammé intervalle', 'reprogrammé dateChoisie'];
+        const validStatuts = ['en attente', 'présent', 'absent', 'payé'];
         if (!validStatuts.includes(statut)) {
             return res.status(400).json({ message: 'Statut invalide' });
         }
@@ -138,7 +138,7 @@ router.put('/:id/statut', authMiddleware, async (req, res) => {
     }
 });
 
-// ✅ Mise à jour de la date choisie par le manager (PUT) - Protégé par authMiddleware
+// ✅ Mise à jour de la date choisie par le manager (PUT)
 router.put('/:id/dateChoisie', authMiddleware, async (req, res) => {
     try {
         const { dateChoisie } = req.body;

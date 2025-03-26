@@ -2,8 +2,9 @@ const express = require('express');
 const Devis = require('../models/Devis');
 const Tache = require('../models/Tache');
 const RendezVous = require('../models/RendezVous');
+const Vehicule = require('../models/Vehicule');
 const generateDevisReference = require('../models/generateDevisReference');
-const { authMiddleware, authClientMiddleware } = require('../middlewares/authMiddleware');
+const { authMiddleware, authClientMiddleware, authManagerMiddleware } = require('../middlewares/authMiddleware');
 
 const router = express.Router();
 
@@ -12,32 +13,58 @@ router.post('/', authClientMiddleware, async (req, res) => {
     try {
         const { taches, dateDemande, vehicule } = req.body;  // Ajout de 'vehicule' et 'dateDemande'
 
-        if (!Array.isArray(taches) || taches.length === 0) {
-            return res.status(400).json({ message: 'Une liste de tâches est requise' });
+        // Vérification de la validité des tâches (elles peuvent être vides)
+        if (taches && !Array.isArray(taches)) {
+            return res.status(400).json({ message: 'Le champ taches doit être un tableau' });
         }
 
-        const tachesExistantes = await Tache.find({ _id: { $in: taches } });
-        if (tachesExistantes.length !== taches.length) {
-            return res.status(400).json({ message: 'Une ou plusieurs tâches sont invalides' });
+        // Si des tâches sont spécifiées, vérifier leur validité
+        if (taches && taches.length > 0) {
+            const tachesExistantes = await Tache.find({ _id: { $in: taches } });
+            if (tachesExistantes.length !== taches.length) {
+                return res.status(400).json({ message: 'Une ou plusieurs tâches sont invalides' });
+            }
         }
 
+        // Vérification du véhicule : s'assurer que le véhicule appartient au client
+        const vehiculeTrouve = await Vehicule.findById(vehicule);
+        if (!vehiculeTrouve) {
+            return res.status(400).json({ message: 'Véhicule non trouvé' });
+        }
+
+        if (vehiculeTrouve.proprietaire.toString() !== req.user.id) {
+            return res.status(403).json({ message: 'Ce véhicule ne vous appartient pas' });
+        }
+
+        // Générer la référence du devis
         const referenceDevis = await generateDevisReference();
 
         // Créer le devis
         const devis = new Devis({
             referenceDevis,
             client: req.user.id,
-            taches,
+            taches, // Liste des tâches (vide ou non)
             vehicule  // Ajouter l'ID du véhicule au devis
         });
 
         await devis.save();  // Enregistrer le devis
 
+        // Validation de la plage de dates demandée (doit être un tableau de dates avec dateHeureDebut et dateHeureFin)
+        if (!Array.isArray(dateDemande) || dateDemande.length === 0) {
+            return res.status(400).json({ message: 'Une plage de dates est requise' });
+        }
+
+        for (const date of dateDemande) {
+            if (!date.dateHeureDebut || !date.dateHeureFin || isNaN(new Date(date.dateHeureDebut).getTime()) || isNaN(new Date(date.dateHeureFin).getTime())) {
+                return res.status(400).json({ message: 'Les dates de la plage demandée sont invalides' });
+            }
+        }
+
         // Créer un rendez-vous avec statut "en attente"
         const rendezVous = new RendezVous({
             client: req.user.id,
             devis: devis._id,  // Utiliser l'ID du devis créé
-            dateDemande: dateDemande,  // Passer la plage de dates demandée
+            dateDemande,  // Passer la plage de dates demandée
             statut: 'en attente'  // Statut par défaut
         });
 
@@ -55,9 +82,26 @@ router.post('/', authClientMiddleware, async (req, res) => {
     }
 });
 
-// ✅ Récupérer tous les devis (AUTHENTIFICATION REQUISE)
-router.get('/', authMiddleware, async (req, res) => {
+// ✅ Récupérer tous les devis d'un client (CLIENT UNIQUEMENT)
+router.get('/client', authClientMiddleware, async (req, res) => {
     try {
+        const devis = await Devis.find({ client: req.user.id })
+            .populate('client')
+            .populate('taches')
+            .populate('vehicule');  // Peupler aussi le véhicule lié au devis
+
+        res.json(devis);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// ✅ Récupérer tous les devis (MANAGER UNIQUEMENT)
+router.get('/', authManagerMiddleware, async (req, res) => {
+    try {
+        // Vérifier si l'utilisateur est un manager (authManagerMiddleware s'en charge)
+        
+        // Récupérer tous les devis
         const devis = await Devis.find()
             .populate('client')
             .populate('taches')
@@ -90,16 +134,20 @@ router.put('/:id', authMiddleware, async (req, res) => {
     try {
         const { taches, vehicule } = req.body;
 
-        if (!Array.isArray(taches) || taches.length === 0) {
-            return res.status(400).json({ message: 'Une liste de tâches est requise' });
+        // Si taches est fourni, vérifier qu'il soit un tableau
+        if (taches !== undefined && !Array.isArray(taches)) {
+            return res.status(400).json({ message: 'Le champ taches doit être un tableau' });
         }
 
         const devis = await Devis.findById(req.params.id);
         if (!devis) return res.status(404).json({ message: 'Devis non trouvé' });
 
-        devis.taches = taches;
+        // Si taches est fourni et n'est pas vide, on les met à jour
+        devis.taches = taches || []; // Si taches est vide ou non défini, on met un tableau vide
+
+        // Si un véhicule est fourni, on met à jour le véhicule
         if (vehicule) {
-            devis.vehicule = vehicule;  // Mettre à jour le véhicule si un nouvel ID est fourni
+            devis.vehicule = vehicule;
         }
 
         await devis.save();
@@ -123,18 +171,5 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     }
 });
 
-// ✅ Récupérer tous les devis d'un client (CLIENT UNIQUEMENT)
-router.get('/client', authClientMiddleware, async (req, res) => {
-    try {
-        const devis = await Devis.find({ client: req.user.id })
-            .populate('client')
-            .populate('taches')
-            .populate('vehicule');  // Peupler aussi le véhicule lié au devis
-
-        res.json(devis);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-});
 
 module.exports = router;
