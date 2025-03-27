@@ -84,7 +84,7 @@ router.post('/', authMiddleware, async (req, res) => {
 
 
 // ✅ Récupérer tous les devis d'un client (CLIENT UNIQUEMENT)
-router.get('/client', authClientMiddleware, async (req, res) => {
+router.get('/client', authMiddleware, async (req, res) => {
     try {
         const devis = await Devis.find({ client: req.user.id })
             .populate('client')

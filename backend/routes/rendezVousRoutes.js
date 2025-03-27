@@ -54,7 +54,7 @@ router.get('/', authMiddleware, async (req, res) => {
 });
 
 // ✅ Récupérer tous les rendez-vous en attente (GET)
-router.get('/en-attente', authMiddleware, async (req, res) => {
+router.get('/en-attente',  async (req, res) => {
     try {
         const rendezVousEnAttente = await RendezVous.find({ statut: 'en attente' })
             .populate('client')
@@ -68,9 +68,67 @@ router.get('/en-attente', authMiddleware, async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 });
+// ✅ Récupérer tous les rendez-vous validés (GET)
+router.get('/valides', async (req, res) => {
+    try {
+        const rendezVousValides = await RendezVous.find({ statut: 'Validé' })
+            .populate('client')
+            .populate('devis')
+            .populate('mecaniciens.mecanicien')
+            .populate('mecaniciens.taches.tache')
+            .populate('articlesUtilises.article');
+
+        res.json(rendezVousValides);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+// ✅ Récupérer les rendez-vous en attente d'un client (GET) - Protégé par authClientMiddleware
+router.get('/client/en-attente', authClientMiddleware, async (req, res) => {
+    try {
+        const clientId = req.user.id;  // Récupère l'ID du client depuis le token
+
+        const rendezVousEnAttente = await RendezVous.find({ client: clientId, statut: 'en attente' })
+            .populate('client')
+            .populate('devis')
+            .populate('mecaniciens.mecanicien')
+            .populate('mecaniciens.taches.tache')
+            .populate('articlesUtilises.article');
+
+        if (rendezVousEnAttente.length === 0) {
+            return res.status(404).json({ message: 'Aucun rendez-vous en attente pour ce client' });
+        }
+
+        res.json(rendezVousEnAttente);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+// ✅ Récupérer les rendez-vous validés d'un client (GET) - Protégé par authClientMiddleware
+router.get('/client/valides', authClientMiddleware, async (req, res) => {
+    try {
+        const clientId = req.user.id;  // Récupère l'ID du client depuis le token
+
+        const rendezVousValidés = await RendezVous.find({ client: clientId, statut: 'Validé' })
+            .populate('client')
+            .populate('devis')
+            .populate('mecaniciens.mecanicien')
+            .populate('mecaniciens.taches.tache')
+            .populate('articlesUtilises.article');
+
+        if (rendezVousValidés.length === 0) {
+            return res.status(404).json({ message: 'Aucun rendez-vous validé pour ce client' });
+        }
+
+        res.json(rendezVousValidés);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 
 // ✅ Récupérer un rendez-vous spécifique (GET)
-router.get('/:id', authMiddleware, async (req, res) => {
+router.get('/:id',  async (req, res) => {
     try {
         const rendezVous = await RendezVous.findById(req.params.id)
             .populate('client')
@@ -88,7 +146,7 @@ router.get('/:id', authMiddleware, async (req, res) => {
 });
 
 // ✅ Mise à jour d'un rendez-vous (PUT)
-router.put('/:id', authMiddleware, async (req, res) => {
+router.put('/:id', async (req, res) => {
     try {
         const { client, devis, dateDemande, statut, dateChoisie, mecaniciens } = req.body;
 
@@ -108,6 +166,31 @@ router.put('/:id', authMiddleware, async (req, res) => {
         );
 
         if (!rendezVous) return res.status(404).json({ message: 'Rendez-vous non trouvé' });
+
+        res.json(rendezVous);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+// ✅ Mise à jour de la date choisie et validation du rendez-vous (PUT)
+router.put('/valider/:id', async (req, res) => {
+    try {
+        const { dateChoisie } = req.body;
+
+        if (!dateChoisie) {
+            return res.status(400).json({ message: 'La date choisie est requise' });
+        }
+
+        // Met à jour uniquement la date choisie et le statut du rendez-vous
+        const rendezVous = await RendezVous.findByIdAndUpdate(
+            req.params.id,
+            { dateChoisie, statut: 'Validé' },
+            { new: true }
+        );
+
+        if (!rendezVous) {
+            return res.status(404).json({ message: 'Rendez-vous non trouvé' });
+        }
 
         res.json(rendezVous);
     } catch (error) {
