@@ -53,6 +53,22 @@ router.get('/', authMiddleware, async (req, res) => {
     }
 });
 
+// ✅ Récupérer tous les rendez-vous en attente (GET)
+router.get('/en-attente', authMiddleware, async (req, res) => {
+    try {
+        const rendezVousEnAttente = await RendezVous.find({ statut: 'en attente' })
+            .populate('client')
+            .populate('devis')
+            .populate('mecaniciens.mecanicien')
+            .populate('mecaniciens.taches.tache')
+            .populate('articlesUtilises.article');
+
+        res.json(rendezVousEnAttente);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 // ✅ Récupérer un rendez-vous spécifique (GET)
 router.get('/:id', authMiddleware, async (req, res) => {
     try {
@@ -133,31 +149,6 @@ router.put('/:id/statut', authMiddleware, async (req, res) => {
         if (!rendezVous) return res.status(404).json({ message: 'Rendez-vous non trouvé' });
 
         res.json({ message: 'Statut mis à jour', rendezVous });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-});
-
-// ✅ Mise à jour de la date choisie par le manager (PUT)
-router.put('/:id/dateChoisie', authMiddleware, async (req, res) => {
-    try {
-        const { dateChoisie } = req.body;
-
-        // Vérifier si la date est valide
-        if (!dateChoisie || isNaN(new Date(dateChoisie).getTime())) {
-            return res.status(400).json({ message: 'Date invalide' });
-        }
-
-        // Mettre à jour la date choisie du rendez-vous
-        const rendezVous = await RendezVous.findByIdAndUpdate(
-            req.params.id,
-            { dateChoisie },
-            { new: true }
-        );
-
-        if (!rendezVous) return res.status(404).json({ message: 'Rendez-vous non trouvé' });
-
-        res.json({ message: 'Date choisie mise à jour', rendezVous });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

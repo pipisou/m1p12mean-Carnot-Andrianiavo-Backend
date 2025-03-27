@@ -16,7 +16,7 @@ const devisSchema = new mongoose.Schema({
     vehicule: { 
         type: mongoose.Schema.Types.ObjectId, 
         ref: 'Vehicule', // Référence au modèle Vehicule
-        required: true  // Le véhicule est requis pour chaque devis
+        required: false
     },
 
     taches: [{ 

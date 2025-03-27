@@ -8,10 +8,9 @@ const { authMiddleware, authClientMiddleware, authManagerMiddleware } = require(
 
 const router = express.Router();
 
-// ✅ Création d'un devis (CLIENT UNIQUEMENT)
-router.post('/', authClientMiddleware, async (req, res) => {
+router.post('/', authMiddleware, async (req, res) => {
     try {
-        const { taches, dateDemande, vehicule } = req.body;  // Ajout de 'vehicule' et 'dateDemande'
+        const { taches, dateDemande, vehicule } = req.body;  // 'vehicule' devient optionnel
 
         // Vérification de la validité des tâches (elles peuvent être vides)
         if (taches && !Array.isArray(taches)) {
@@ -26,30 +25,33 @@ router.post('/', authClientMiddleware, async (req, res) => {
             }
         }
 
-        // Vérification du véhicule : s'assurer que le véhicule appartient au client
-        const vehiculeTrouve = await Vehicule.findById(vehicule);
-        if (!vehiculeTrouve) {
-            return res.status(400).json({ message: 'Véhicule non trouvé' });
-        }
+        let vehiculeValide = null;
 
-        if (vehiculeTrouve.proprietaire.toString() !== req.user.id) {
-            return res.status(403).json({ message: 'Ce véhicule ne vous appartient pas' });
+        // Vérification du véhicule uniquement s'il est fourni
+        if (vehicule) {
+            vehiculeValide = await Vehicule.findById(vehicule);
+            if (!vehiculeValide) {
+                return res.status(400).json({ message: 'Véhicule non trouvé' });
+            }
+            if (vehiculeValide.proprietaire.toString() !== req.user.id) {
+                return res.status(403).json({ message: 'Ce véhicule ne vous appartient pas' });
+            }
         }
 
         // Générer la référence du devis
         const referenceDevis = await generateDevisReference();
 
-        // Créer le devis
+        // Créer le devis (avec ou sans véhicule)
         const devis = new Devis({
             referenceDevis,
             client: req.user.id,
             taches, // Liste des tâches (vide ou non)
-            vehicule  // Ajouter l'ID du véhicule au devis
+            vehicule: vehiculeValide ? vehiculeValide._id : null  // Si pas de véhicule, valeur null
         });
 
         await devis.save();  // Enregistrer le devis
 
-        // Validation de la plage de dates demandée (doit être un tableau de dates avec dateHeureDebut et dateHeureFin)
+        // Validation de la plage de dates demandée
         if (!Array.isArray(dateDemande) || dateDemande.length === 0) {
             return res.status(400).json({ message: 'Une plage de dates est requise' });
         }
@@ -81,6 +83,7 @@ router.post('/', authClientMiddleware, async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 });
+
 
 // ✅ Récupérer tous les devis d'un client (CLIENT UNIQUEMENT)
 router.get('/client', authClientMiddleware, async (req, res) => {
