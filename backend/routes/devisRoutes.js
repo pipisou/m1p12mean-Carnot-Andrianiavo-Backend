@@ -49,7 +49,6 @@ router.post('/', authMiddleware, async (req, res) => {
             vehicule: vehiculeValide ? vehiculeValide._id : null  // Si pas de véhicule, valeur null
         });
 
-        await devis.save();  // Enregistrer le devis
 
         // Validation de la plage de dates demandée
         if (!Array.isArray(dateDemande) || dateDemande.length === 0) {
@@ -69,14 +68,13 @@ router.post('/', authMiddleware, async (req, res) => {
             dateDemande,  // Passer la plage de dates demandée
             statut: 'en attente'  // Statut par défaut
         });
-
+        await devis.save();  // Enregistrer le devis
         await rendezVous.save();  // Enregistrer le rendez-vous
 
         // Retourner les informations du devis et du rendez-vous
         res.status(201).json({
             message: 'Devis et rendez-vous créés avec succès',
-            devis,
-            rendezVous
+            reference: referenceDevis
         });
 
     } catch (error) {
