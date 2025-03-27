@@ -67,7 +67,7 @@ const rendezVousSchema = new mongoose.Schema({
 
     statut: {
         type: String,
-        enum: ['en attente', 'présent', 'absent', 'payé'],
+        enum: ['en attente','validé', 'présent', 'absent', 'payé'],
         default: 'en attente'
     }
 }, { timestamps: true });
