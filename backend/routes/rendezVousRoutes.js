@@ -394,13 +394,14 @@ router.delete('/:id', authMiddleware, async (req, res) => {
         }
 
         // Supprimer le rendez-vous
-        await rendezVous.remove();
+        await rendezVous.deleteOne(); // Remplacer remove() par deleteOne()
 
         res.json({ message: 'Rendez-vous et devis supprimés' });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 });
+
 
 // ✅ Mise à jour du statut d'un rendez-vous (PUT)
 router.put('/:id/statut', async (req, res) => {
