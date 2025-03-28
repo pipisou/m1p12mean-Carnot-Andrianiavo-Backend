@@ -428,7 +428,6 @@ router.put('/:id/statut', async (req, res) => {
     }
 });
 
-
 // ✅ Mise à jour d'une plage de dates demandée et passage du rendez-vous en attente
 router.put('/rendezvous/:id/modifier-dates', authClientMiddleware, async (req, res) => { 
     try {
@@ -448,10 +447,14 @@ router.put('/rendezvous/:id/modifier-dates', authClientMiddleware, async (req, r
             }
         }
 
-        // Mise à jour du rendez-vous avec la nouvelle plage de dates et statut "EN ATTENTE"
+        // Mise à jour du rendez-vous avec la nouvelle plage de dates, statut "EN ATTENTE" et dateChoisie à null
         const rendezVous = await RendezVous.findByIdAndUpdate(
             req.params.id,
-            { dateDemande, statut: 'en attente' }, 
+            { 
+                dateDemande, 
+                statut: 'en attente', 
+                dateChoisie: null // Ajout de la mise à jour de dateChoisie
+            }, 
             { new: true }
         );
 
