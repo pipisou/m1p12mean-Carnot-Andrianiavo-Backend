@@ -14,23 +14,19 @@ router.post('/', async (req, res) => {
     try {
         const { client, devis, dateDemande, statut } = req.body;
 
-        // Vérifier si le client existe
-        const clientExist = await Client.findById(client);
-        if (!clientExist) return res.status(400).json({ message: 'Client non trouvé' });
+        // Vérifier si le client et le devis existent
+        const [clientExist, devisExist] = await Promise.all([
+            Client.findById(client),
+            Devis.findById(devis)
+        ]);
 
-        // Vérifier si le devis existe
-        const devisExist = await Devis.findById(devis);
+        if (!clientExist) return res.status(400).json({ message: 'Client non trouvé' });
         if (!devisExist) return res.status(400).json({ message: 'Devis non trouvé' });
 
         // Créer un rendez-vous
-        const rendezVous = new RendezVous({
-            client,
-            devis,
-            dateDemande,
-            statut: statut || 'en attente'
-        });
-
+        const rendezVous = new RendezVous({ client, devis, dateDemande, statut: statut || 'en attente' });
         await rendezVous.save();
+
         res.status(201).json({ message: 'Rendez-vous créé', rendezVous });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -52,8 +48,8 @@ router.get('/', authMiddleware, async (req, res) => {
                 }
             ]
         })
-        .populate('mecaniciens.mecanicien')
-        .populate('mecaniciens.taches.tache')
+        .populate('taches.tache')
+        .populate('taches.mecanicien')
         .populate('articlesUtilises.article');
 
         res.json(rendezVous);
@@ -77,8 +73,8 @@ router.get('/en-attente', async (req, res) => {
                 }
             ]
         })
-        .populate('mecaniciens.mecanicien')
-        .populate('mecaniciens.taches.tache')
+        .populate('taches.tache')
+        .populate('taches.mecanicien')
         .populate('articlesUtilises.article');
 
         res.json(rendezVousEnAttente);
@@ -102,8 +98,8 @@ router.get('/valides', async (req, res) => {
                 }
             ]
         })
-        .populate('mecaniciens.mecanicien')
-        .populate('mecaniciens.taches.tache')
+        .populate('taches.tache')
+        .populate('taches.mecanicien')
         .populate('articlesUtilises.article');
 
         res.json(rendezVousValides);
@@ -127,8 +123,8 @@ router.get('/present', async (req, res) => {
                 }
             ]
         })
-        .populate('mecaniciens.mecanicien')
-        .populate('mecaniciens.taches.tache')
+        .populate('taches.tache')
+        .populate('taches.mecanicien')
         .populate('articlesUtilises.article');
 
         res.json(rendezVousPresents);
@@ -152,8 +148,8 @@ router.get('/absent', async (req, res) => {
                 }
             ]
         })
-        .populate('mecaniciens.mecanicien')
-        .populate('mecaniciens.taches.tache')
+        .populate('taches.tache')
+        .populate('taches.mecanicien')
         .populate('articlesUtilises.article');
 
         res.json(rendezVousAbsents);
@@ -181,8 +177,8 @@ router.get('/client', authClientMiddleware, async (req, res) => {
                 }
             ]
         })
-        .populate('mecaniciens.mecanicien')
-        .populate('mecaniciens.taches.tache')
+        .populate('taches.tache')
+        .populate('taches.mecanicien')
         .populate('articlesUtilises.article');
 
         res.json(rendezVous); // Retourne le tableau (même s'il est vide)
@@ -209,8 +205,8 @@ router.get('/client/en-attente', authClientMiddleware, async (req, res) => {
                 }
             ]
         })
-        .populate('mecaniciens.mecanicien')
-        .populate('mecaniciens.taches.tache')
+        .populate('taches.tache')
+        .populate('taches.mecanicien')
         .populate('articlesUtilises.article');
         res.json(rendezVousEnAttente); // Retourne le tableau (même s'il est vide)
     } catch (error) {
@@ -235,8 +231,8 @@ router.get('/client/valides', authClientMiddleware, async (req, res) => {
                 }
             ]
         })
-        .populate('mecaniciens.mecanicien')
-        .populate('mecaniciens.taches.tache')
+        .populate('taches.tache')
+        .populate('taches.mecanicien')
         .populate('articlesUtilises.article');
 
         res.json(rendezVousValidés); // Retourne le tableau (même s'il est vide)
@@ -264,8 +260,8 @@ router.get('/client/present', authClientMiddleware, async (req, res) => {
                 }
             ]
         })
-        .populate('mecaniciens.mecanicien')
-        .populate('mecaniciens.taches.tache')
+        .populate('taches.tache')
+        .populate('taches.mecanicien')
         .populate('articlesUtilises.article');
 
         res.json(rendezVousPresents); // Retourne le tableau (même s'il est vide)
@@ -291,8 +287,8 @@ router.get('/client/absent', authClientMiddleware, async (req, res) => {
                 }
             ]
         })
-        .populate('mecaniciens.mecanicien')
-        .populate('mecaniciens.taches.tache')
+        .populate('taches.tache')
+        .populate('taches.mecanicien')
         .populate('articlesUtilises.article');
 
         res.json(rendezVousAbsents); // Retourne le tableau (même s'il est vide)
@@ -418,6 +414,44 @@ router.put('/:id/statut', async (req, res) => {
         res.json({ message: 'Statut mis à jour', rendezVous });
     } catch (error) {
         res.status(500).json({ message: error.message });
+    }
+});
+
+
+// ✅ Mise à jour d'une plage de dates demandée et passage du rendez-vous en attente
+router.put('/rendezvous/:id/modifier-dates', authClientMiddleware, async (req, res) => { 
+    try {
+        const { dateDemande } = req.body;
+
+        // Vérifie que la demande est bien un tableau et qu'il n'est pas vide
+        if (!Array.isArray(dateDemande) || dateDemande.length === 0) {
+            return res.status(400).json({ message: 'Une plage de dates est requise' });
+        }
+
+        // Vérifie la validité des dates dans le tableau
+        for (const date of dateDemande) {
+            if (!date.dateHeureDebut || !date.dateHeureFin || 
+                isNaN(new Date(date.dateHeureDebut).getTime()) || 
+                isNaN(new Date(date.dateHeureFin).getTime())) {
+                return res.status(400).json({ message: 'Les dates de la plage demandée sont invalides' });
+            }
+        }
+
+        // Mise à jour du rendez-vous avec la nouvelle plage de dates et statut "EN ATTENTE"
+        const rendezVous = await RendezVous.findByIdAndUpdate(
+            req.params.id,
+            { dateDemande, statut: 'en attente' }, 
+            { new: true }
+        );
+
+        if (!rendezVous) {
+            return res.status(404).json({ message: 'Rendez-vous non trouvé' });
+        }
+
+        res.json({ message: 'Plage de dates mise à jour avec succès', rendezVous });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erreur serveur' });
     }
 });
 
