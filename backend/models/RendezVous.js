@@ -12,31 +12,32 @@ const rendezVousSchema = new mongoose.Schema({
         required: true
     },
 
-    // Assignation des mécaniciens avec leurs tâches et horaires
-    mecaniciens: [
-        { 
+    // Liste des tâches liées au rendez-vous
+    taches: [
+        {
+            tache: { 
+                type: mongoose.Schema.Types.ObjectId, 
+                ref: 'Tache', 
+                required: true 
+            },
             mecanicien: { 
                 type: mongoose.Schema.Types.ObjectId, 
                 ref: 'Mecanicien', 
-                required: true 
+                required: false // Peut être null au départ
             },
-            taches: [
-                {
-                    tache: { 
-                        type: mongoose.Schema.Types.ObjectId, 
-                        ref: 'Tache', 
-                        required: true 
-                    },
-                    dateHeureDebut: { 
-                        type: Date, 
-                        required: true 
-                    },
-                    dateHeureFin: { 
-                        type: Date, 
-                        required: true 
-                    }
-                }
-            ]
+            dateHeureDebut: { 
+                type: Date, 
+                required: false // On l'ajoutera plus tard
+            },
+            dateHeureFin: { 
+                type: Date, 
+                required: false // On l'ajoutera plus tard
+            },
+            statut: {
+                type: String,
+                enum: ['en attente', 'en cours', 'terminée'],
+                default: 'en attente'
+            }
         }
     ],
 
@@ -67,7 +68,7 @@ const rendezVousSchema = new mongoose.Schema({
 
     statut: {
         type: String,
-        enum: ['en attente','validé', 'présent', 'absent', 'payé'],
+        enum: ['en attente', 'validé', 'présent', 'absent', 'payé'],
         default: 'en attente'
     }
 }, { timestamps: true });

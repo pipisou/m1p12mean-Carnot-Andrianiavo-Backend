@@ -159,14 +159,19 @@ router.put('/:id', authMiddleware, async (req, res) => {
     }
 });
 
-// ✅ Supprimer un devis (AUTHENTIFICATION REQUISE)
+// ✅ Supprimer un devis et les rendez-vous associés (AUTHENTIFICATION REQUISE)
 router.delete('/:id', authMiddleware, async (req, res) => {
     try {
         const devis = await Devis.findById(req.params.id);
         if (!devis) return res.status(404).json({ message: 'Devis non trouvé' });
 
+        // Supprimer les rendez-vous associés au devis
+        await RendezVous.deleteMany({ devis: devis._id });
+
+        // Supprimer le devis
         await devis.deleteOne();
-        res.json({ message: 'Devis supprimé avec succès' });
+
+        res.json({ message: 'Devis et rendez-vous associés supprimés avec succès' });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
