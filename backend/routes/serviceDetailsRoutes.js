@@ -99,7 +99,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // ✅ Récupérer toutes les tâches d'un ServiceDetails spécifique (GET)
-router.get('/alltaches/:id', authMiddleware, async (req, res) => {
+router.get('/alltaches/:id', async (req, res) => {
     try {
         const { id } = req.params;
 
@@ -119,7 +119,7 @@ router.get('/alltaches/:id', authMiddleware, async (req, res) => {
 });
 
 // ✅ Récupérer les ServiceDetails par catégorie de véhicule (GET)
-router.get('/categorie/:categorieId', authMiddleware, async (req, res) => {
+router.get('/categorie/:categorieId',  async (req, res) => {
     try {
         const serviceDetails = await ServiceDetails.find({ categorieDeVehicule: req.params.categorieId })
             .populate('service')

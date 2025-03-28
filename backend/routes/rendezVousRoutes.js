@@ -299,31 +299,41 @@ router.get('/client/absent', authClientMiddleware, async (req, res) => {
 
 
 // ✅ Récupérer un rendez-vous spécifique (GET)
-router.get('/:id',  async (req, res) => {
+router.get('/:id', async (req, res) => {
     try {
         const rendezVous = await RendezVous.findById(req.params.id)
-        .populate('client')
-        .populate({
-            path: 'devis',
-            populate: [
-                { path: 'taches' },   // Peupler les tâches du devis
-                { 
-                    path: 'vehicule',
-                    populate: { path: 'categorie' }  // Peupler la catégorie du véhicule
-                }
-            ]
-        })
-        .populate('taches.tache')
-        .populate('taches.mecanicien')
-        .populate('articlesUtilises.article');
+            .populate('client')
+            .populate({
+                path: 'devis',
+                populate: [
+                    { path: 'taches' }, // Peupler les tâches du devis
+                    {
+                        path: 'vehicule',
+                        populate: { path: 'categorie' } // Peupler la catégorie du véhicule
+                    }
+                ]
+            })
+            .populate('taches.tache')
+            .populate('taches.mecanicien')
+            .populate('articlesUtilises.article');
 
         if (!rendezVous) return res.status(404).json({ message: 'Rendez-vous non trouvé' });
+
+        // Trier les tâches par 'dateHeureDebut' dans l'ordre croissant
+        if (rendezVous.taches && Array.isArray(rendezVous.taches)) {
+            rendezVous.taches.sort((a, b) => {
+                const dateA = new Date(a.dateHeureDebut);
+                const dateB = new Date(b.dateHeureDebut);
+                return dateA - dateB; // Tri croissant
+            });
+        }
 
         res.json(rendezVous);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 });
+
 
 // ✅ Mise à jour d'un rendez-vous (PUT)
 router.put('/:id', async (req, res) => {
@@ -469,5 +479,39 @@ router.put('/rendezvous/:id/modifier-dates', authClientMiddleware, async (req, r
         res.status(500).json({ message: 'Erreur serveur' });
     }
 });
+// Mettre à jour uniquement les champs mecanicien, dateHeureDebut et dateHeureFin dans les tâches
+
+router.put('/rendezvous/:id/taches', async (req, res) => {
+    try {
+        const { taches } = req.body;
+
+        if (!taches || !Array.isArray(taches)) {
+            return res.status(400).json({ message: "Liste des tâches invalide." });
+        }
+
+        // Mise à jour des tâches spécifiques du rendez-vous
+        const rendezVous = await RendezVous.findById(req.params.id);
+        if (!rendezVous) {
+            return res.status(404).json({ message: "Rendez-vous non trouvé." });
+        }
+
+        rendezVous.taches.forEach(tache => {
+            const updatedTache = taches.find(t => t.tacheId.toString() === tache._id.toString());
+            if (updatedTache) {
+                if (updatedTache.mecanicien) tache.mecanicien = updatedTache.mecanicien;
+                if (updatedTache.dateHeureDebut) tache.dateHeureDebut = updatedTache.dateHeureDebut;
+                if (updatedTache.dateHeureFin) tache.dateHeureFin = updatedTache.dateHeureFin;
+            }
+        });
+
+        await rendezVous.save();
+        res.status(200).json({ message: "Tâches mises à jour avec succès", rendezVous });
+
+    } catch (error) {
+        console.error("Erreur lors de la mise à jour des tâches :", error);
+        res.status(500).json({ message: "Erreur serveur", error });
+    }
+});
+
 
 module.exports = router;

@@ -49,7 +49,6 @@ router.post('/', authMiddleware, async (req, res) => {
             vehicule: vehiculeValide ? vehiculeValide._id : null  // Si pas de véhicule, valeur null
         });
 
-
         // Validation de la plage de dates demandée
         if (!Array.isArray(dateDemande) || dateDemande.length === 0) {
             return res.status(400).json({ message: 'Une plage de dates est requise' });
@@ -66,8 +65,17 @@ router.post('/', authMiddleware, async (req, res) => {
             client: req.user.id,
             devis: devis._id,  // Utiliser l'ID du devis créé
             dateDemande,  // Passer la plage de dates demandée
-            statut: 'en attente'  // Statut par défaut
+            statut: 'en attente',  // Statut par défaut
+            taches: taches.map(tacheId => ({
+                tache: tacheId,  // ID de la tâche
+                mecanicien: null, // Null pour l'instant
+                dateHeureDebut: null, // Null pour l'instant
+                dateHeureFin: null, // Null pour l'instant
+                statut: 'en attente' // Statut par défaut
+            }))
         });
+
+        // Enregistrer le devis et le rendez-vous
         await devis.save();  // Enregistrer le devis
         await rendezVous.save();  // Enregistrer le rendez-vous
 
@@ -115,7 +123,7 @@ router.get('/', authManagerMiddleware, async (req, res) => {
 });
 
 // ✅ Récupérer un devis par son ID (AUTHENTIFICATION REQUISE)
-router.get('/:id', authMiddleware, async (req, res) => {
+router.get('/:id', async (req, res) => {
     try {
         const devis = await Devis.findById(req.params.id)
             .populate('client')
@@ -131,7 +139,7 @@ router.get('/:id', authMiddleware, async (req, res) => {
 });
 
 // ✅ Mettre à jour un devis (AUTHENTIFICATION REQUISE)
-router.put('/:id', authMiddleware, async (req, res) => {
+router.put('/:id',  async (req, res) => {
     try {
         const { taches, vehicule } = req.body;
 
@@ -143,6 +151,9 @@ router.put('/:id', authMiddleware, async (req, res) => {
         const devis = await Devis.findById(req.params.id);
         if (!devis) return res.status(404).json({ message: 'Devis non trouvé' });
 
+        // Sauvegarde des anciennes tâches du devis avant modification
+        const anciennesTaches = devis.taches;
+
         // Si taches est fourni et n'est pas vide, on les met à jour
         devis.taches = taches || []; // Si taches est vide ou non défini, on met un tableau vide
 
@@ -151,13 +162,44 @@ router.put('/:id', authMiddleware, async (req, res) => {
             devis.vehicule = vehicule;
         }
 
+        // Sauvegarder les modifications du devis
         await devis.save();
 
-        res.json({ message: 'Devis mis à jour avec succès', devis });
+        // Mettre à jour les tâches dans le rendez-vous associé au devis
+        const rendezVous = await RendezVous.findOne({ devis: devis._id });
+        if (rendezVous) {
+            // Conserver les anciennes tâches et ajouter les nouvelles
+            const nouvellesTaches = taches || [];
+
+            // Supprimer les tâches qui ne sont plus dans le devis
+            rendezVous.taches = rendezVous.taches.filter(tache => 
+                nouvellesTaches.includes(tache.tache.toString()) // On garde uniquement celles présentes dans le devis
+            );
+
+            // Ajouter les nouvelles tâches qui ne sont pas encore dans le rendez-vous
+            for (let tacheId of nouvellesTaches) {
+                const tacheExistante = rendezVous.taches.some(t => t.tache.toString() === tacheId);
+                if (!tacheExistante) {
+                    rendezVous.taches.push({
+                        tache: tacheId,  // ID de la tâche
+                        mecanicien: null, // Null pour l'instant
+                        dateHeureDebut: null, // Null pour l'instant
+                        dateHeureFin: null, // Null pour l'instant
+                        statut: 'en attente' // Statut par défaut
+                    });
+                }
+            }
+
+            // Sauvegarder les modifications du rendez-vous
+            await rendezVous.save();
+        }
+
+        res.json({ message: 'Devis et rendez-vous mis à jour avec succès', devis });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 });
+
 
 // ✅ Supprimer un devis et les rendez-vous associés (AUTHENTIFICATION REQUISE)
 router.delete('/:id', authMiddleware, async (req, res) => {
