@@ -313,8 +313,8 @@ router.get('/:id',  async (req, res) => {
                 }
             ]
         })
-        .populate('mecaniciens.mecanicien')
-        .populate('mecaniciens.taches.tache')
+        .populate('taches.tache')
+        .populate('taches.mecanicien')
         .populate('articlesUtilises.article');
 
         if (!rendezVous) return res.status(404).json({ message: 'Rendez-vous non trouvé' });
