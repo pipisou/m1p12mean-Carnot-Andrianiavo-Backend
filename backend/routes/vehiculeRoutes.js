@@ -13,6 +13,7 @@ router.get('/client', authClientMiddleware, async (req, res) => {
     }
 });
 
+
 // Ajouter un véhicule - Nécessite un token client
 router.post('/', authClientMiddleware, async (req, res) => {
     try {
@@ -56,6 +57,23 @@ router.get('/:id', async (req, res) => {
 
         res.json(vehicule);
     } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+// Récupérer tous les véhicules du client - Nécessite un token client
+router.get('/client/:id', async (req, res) => {
+    try {
+        // Récupérer tous les véhicules associés au client dont l'ID est dans req.params.id
+        const vehicules = await Vehicule.find({ proprietaire: req.params.id }).populate('categorie');
+        
+        // Si aucun véhicule n'est trouvé
+        if (!vehicules || vehicules.length === 0) {
+            return res.status(404).json({ message: 'Aucun véhicule trouvé pour ce client.' });
+        }
+
+        res.json(vehicules);
+    } catch (err) {
+        // Gestion des erreurs
         res.status(500).json({ error: err.message });
     }
 });
