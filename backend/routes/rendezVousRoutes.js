@@ -41,11 +41,20 @@ router.post('/', async (req, res) => {
 router.get('/', authMiddleware, async (req, res) => {
     try {
         const rendezVous = await RendezVous.find()
-            .populate('client')
-            .populate('devis')
-            .populate('mecaniciens.mecanicien')
-            .populate('mecaniciens.taches.tache')
-            .populate('articlesUtilises.article');
+        .populate('client')
+        .populate({
+            path: 'devis',
+            populate: [
+                { path: 'taches' },   // Peupler les tâches du devis
+                { 
+                    path: 'vehicule',
+                    populate: { path: 'categorie' }  // Peupler la catégorie du véhicule
+                }
+            ]
+        })
+        .populate('mecaniciens.mecanicien')
+        .populate('mecaniciens.taches.tache')
+        .populate('articlesUtilises.article');
 
         res.json(rendezVous);
     } catch (error) {
@@ -54,73 +63,239 @@ router.get('/', authMiddleware, async (req, res) => {
 });
 
 // ✅ Récupérer tous les rendez-vous en attente (GET)
-router.get('/en-attente',  async (req, res) => {
+router.get('/en-attente', async (req, res) => {
     try {
         const rendezVousEnAttente = await RendezVous.find({ statut: 'en attente' })
-            .populate('client')
-            .populate('devis')
-            .populate('mecaniciens.mecanicien')
-            .populate('mecaniciens.taches.tache')
-            .populate('articlesUtilises.article');
+        .populate('client')
+        .populate({
+            path: 'devis',
+            populate: [
+                { path: 'taches' },   // Peupler les tâches du devis
+                { 
+                    path: 'vehicule',
+                    populate: { path: 'categorie' }  // Peupler la catégorie du véhicule
+                }
+            ]
+        })
+        .populate('mecaniciens.mecanicien')
+        .populate('mecaniciens.taches.tache')
+        .populate('articlesUtilises.article');
 
         res.json(rendezVousEnAttente);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 });
+
 // ✅ Récupérer tous les rendez-vous validés (GET)
 router.get('/valides', async (req, res) => {
     try {
-        const rendezVousValides = await RendezVous.find({ statut: 'Validé' })
-            .populate('client')
-            .populate('devis')
-            .populate('mecaniciens.mecanicien')
-            .populate('mecaniciens.taches.tache')
-            .populate('articlesUtilises.article');
+        const rendezVousValides = await RendezVous.find({ statut: 'validé' })
+        .populate('client')
+        .populate({
+            path: 'devis',
+            populate: [
+                { path: 'taches' },   // Peupler les tâches du devis
+                { 
+                    path: 'vehicule',
+                    populate: { path: 'categorie' }  // Peupler la catégorie du véhicule
+                }
+            ]
+        })
+        .populate('mecaniciens.mecanicien')
+        .populate('mecaniciens.taches.tache')
+        .populate('articlesUtilises.article');
 
         res.json(rendezVousValides);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 });
-// ✅ Récupérer les rendez-vous en attente d'un client (GET) - Protégé par authClientMiddleware
+
+// ✅ Récupérer tous les rendez-vous marqués comme "Présent" (GET)
+router.get('/present', async (req, res) => {
+    try {
+        const rendezVousPresents = await RendezVous.find({ statut: 'présent' })
+        .populate('client')
+        .populate({
+            path: 'devis',
+            populate: [
+                { path: 'taches' },
+                { 
+                    path: 'vehicule',
+                    populate: { path: 'categorie' }
+                }
+            ]
+        })
+        .populate('mecaniciens.mecanicien')
+        .populate('mecaniciens.taches.tache')
+        .populate('articlesUtilises.article');
+
+        res.json(rendezVousPresents);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// ✅ Récupérer tous les rendez-vous marqués comme "Absent" (GET)
+router.get('/absent', async (req, res) => {
+    try {
+        const rendezVousAbsents = await RendezVous.find({ statut: 'absent' })
+        .populate('client')
+        .populate({
+            path: 'devis',
+            populate: [
+                { path: 'taches' },
+                { 
+                    path: 'vehicule',
+                    populate: { path: 'categorie' }
+                }
+            ]
+        })
+        .populate('mecaniciens.mecanicien')
+        .populate('mecaniciens.taches.tache')
+        .populate('articlesUtilises.article');
+
+        res.json(rendezVousAbsents);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+
+
+// ✅ Récupérer tous les rendez-vous d'un client (GET) - Protégé par authClientMiddleware
+router.get('/client', authClientMiddleware, async (req, res) => {
+    try {
+        const clientId = req.user.id;  // Récupère l'ID du client depuis le token
+
+        const rendezVous = await RendezVous.find({ client: clientId })
+        .populate('client')
+        .populate({
+            path: 'devis',
+            populate: [
+                { path: 'taches' },
+                { 
+                    path: 'vehicule',
+                    populate: { path: 'categorie' }
+                }
+            ]
+        })
+        .populate('mecaniciens.mecanicien')
+        .populate('mecaniciens.taches.tache')
+        .populate('articlesUtilises.article');
+
+        res.json(rendezVous); // Retourne le tableau (même s'il est vide)
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+
+// ✅ Récupérer les rendez-vous en attente d'un client (GET)
 router.get('/client/en-attente', authClientMiddleware, async (req, res) => {
     try {
         const clientId = req.user.id;  // Récupère l'ID du client depuis le token
 
         const rendezVousEnAttente = await RendezVous.find({ client: clientId, statut: 'en attente' })
-            .populate('client')
-            .populate('devis')
-            .populate('mecaniciens.mecanicien')
-            .populate('mecaniciens.taches.tache')
-            .populate('articlesUtilises.article');
-
-        if (rendezVousEnAttente.length === 0) {
-            return res.status(404).json({ message: 'Aucun rendez-vous en attente pour ce client' });
-        }
-
-        res.json(rendezVousEnAttente);
+        .populate('client')
+        .populate({
+            path: 'devis',
+            populate: [
+                { path: 'taches' },   // Peupler les tâches du devis
+                { 
+                    path: 'vehicule',
+                    populate: { path: 'categorie' }  // Peupler la catégorie du véhicule
+                }
+            ]
+        })
+        .populate('mecaniciens.mecanicien')
+        .populate('mecaniciens.taches.tache')
+        .populate('articlesUtilises.article');
+        res.json(rendezVousEnAttente); // Retourne le tableau (même s'il est vide)
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 });
-// ✅ Récupérer les rendez-vous validés d'un client (GET) - Protégé par authClientMiddleware
+
+// ✅ Récupérer les rendez-vous validés d'un client (GET)
 router.get('/client/valides', authClientMiddleware, async (req, res) => {
     try {
         const clientId = req.user.id;  // Récupère l'ID du client depuis le token
 
-        const rendezVousValidés = await RendezVous.find({ client: clientId, statut: 'Validé' })
-            .populate('client')
-            .populate('devis')
-            .populate('mecaniciens.mecanicien')
-            .populate('mecaniciens.taches.tache')
-            .populate('articlesUtilises.article');
+        const rendezVousValidés = await RendezVous.find({ client: clientId, statut: 'validé' }) // Attention à la casse "validé" au lieu de "Validé"
+        .populate('client')
+        .populate({
+            path: 'devis',
+            populate: [
+                { path: 'taches' },   // Peupler les tâches du devis
+                { 
+                    path: 'vehicule',
+                    populate: { path: 'categorie' }  // Peupler la catégorie du véhicule
+                }
+            ]
+        })
+        .populate('mecaniciens.mecanicien')
+        .populate('mecaniciens.taches.tache')
+        .populate('articlesUtilises.article');
 
-        if (rendezVousValidés.length === 0) {
-            return res.status(404).json({ message: 'Aucun rendez-vous validé pour ce client' });
-        }
+        res.json(rendezVousValidés); // Retourne le tableau (même s'il est vide)
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
 
-        res.json(rendezVousValidés);
+
+
+// ✅ Récupérer les rendez-vous "Présent" d'un client (GET) - Protégé par authClientMiddleware
+router.get('/client/present', authClientMiddleware, async (req, res) => {
+    try {
+        const clientId = req.user.id;  // Récupère l'ID du client depuis le token
+
+        const rendezVousPresents = await RendezVous.find({ client: clientId, statut: 'présent' })
+        .populate('client')
+        .populate({
+            path: 'devis',
+            populate: [
+                { path: 'taches' },
+                { 
+                    path: 'vehicule',
+                    populate: { path: 'categorie' }
+                }
+            ]
+        })
+        .populate('mecaniciens.mecanicien')
+        .populate('mecaniciens.taches.tache')
+        .populate('articlesUtilises.article');
+
+        res.json(rendezVousPresents); // Retourne le tableau (même s'il est vide)
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// ✅ Récupérer les rendez-vous "Absent" d'un client (GET) - Protégé par authClientMiddleware
+router.get('/client/absent', authClientMiddleware, async (req, res) => {
+    try {
+        const clientId = req.user.id;  // Récupère l'ID du client depuis le token
+
+        const rendezVousAbsents = await RendezVous.find({ client: clientId, statut: 'absent' })
+        .populate('client')
+        .populate({
+            path: 'devis',
+            populate: [
+                { path: 'taches' },
+                { 
+                    path: 'vehicule',
+                    populate: { path: 'categorie' }
+                }
+            ]
+        })
+        .populate('mecaniciens.mecanicien')
+        .populate('mecaniciens.taches.tache')
+        .populate('articlesUtilises.article');
+
+        res.json(rendezVousAbsents); // Retourne le tableau (même s'il est vide)
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -131,11 +306,20 @@ router.get('/client/valides', authClientMiddleware, async (req, res) => {
 router.get('/:id',  async (req, res) => {
     try {
         const rendezVous = await RendezVous.findById(req.params.id)
-            .populate('client')
-            .populate('devis')
-            .populate('mecaniciens.mecanicien')
-            .populate('mecaniciens.taches.tache')
-            .populate('articlesUtilises.article');
+        .populate('client')
+        .populate({
+            path: 'devis',
+            populate: [
+                { path: 'taches' },   // Peupler les tâches du devis
+                { 
+                    path: 'vehicule',
+                    populate: { path: 'categorie' }  // Peupler la catégorie du véhicule
+                }
+            ]
+        })
+        .populate('mecaniciens.mecanicien')
+        .populate('mecaniciens.taches.tache')
+        .populate('articlesUtilises.article');
 
         if (!rendezVous) return res.status(404).json({ message: 'Rendez-vous non trouvé' });
 
@@ -184,7 +368,7 @@ router.put('/valider/:id', async (req, res) => {
         // Met à jour uniquement la date choisie et le statut du rendez-vous
         const rendezVous = await RendezVous.findByIdAndUpdate(
             req.params.id,
-            { dateChoisie, statut: 'Validé' },
+            { dateChoisie, statut: 'validé' },
             { new: true }
         );
 
@@ -212,7 +396,7 @@ router.delete('/:id', authMiddleware, async (req, res) => {
 });
 
 // ✅ Mise à jour du statut d'un rendez-vous (PUT)
-router.put('/:id/statut', authMiddleware, async (req, res) => {
+router.put('/:id/statut', async (req, res) => {
     try {
         const { statut } = req.body;
 
