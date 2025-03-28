@@ -378,14 +378,25 @@ router.put('/valider/:id', async (req, res) => {
     }
 });
 
-// ✅ Suppression d'un rendez-vous (DELETE)
+
+// ✅ Suppression d'un rendez-vous et du devis associé (DELETE)
 router.delete('/:id', authMiddleware, async (req, res) => {
     try {
-        const rendezVous = await RendezVous.findByIdAndDelete(req.params.id);
+        // Récupérer le rendez-vous
+        const rendezVous = await RendezVous.findById(req.params.id).populate('devis');
 
         if (!rendezVous) return res.status(404).json({ message: 'Rendez-vous non trouvé' });
 
-        res.json({ message: 'Rendez-vous supprimé' });
+        // Supprimer le devis associé
+        const devis = rendezVous.devis;
+        if (devis) {
+            await Devis.findByIdAndDelete(devis._id);
+        }
+
+        // Supprimer le rendez-vous
+        await rendezVous.remove();
+
+        res.json({ message: 'Rendez-vous et devis supprimés' });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
