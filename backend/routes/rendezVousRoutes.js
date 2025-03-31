@@ -5,7 +5,8 @@ const Client = require('../models/Client');
 const Devis = require('../models/Devis');
 const Mecanicien = require('../models/Mecanicien');
 const Stock = require('../models/Stock');
-const { authMiddleware, authClientMiddleware } = require('../middlewares/authMiddleware');
+const Article = require('../models/Article');
+const { authMiddleware, authClientMiddleware,authMecanicienMiddleware } = require('../middlewares/authMiddleware');
 
 const router = express.Router();
 
@@ -479,22 +480,23 @@ router.put('/rendezvous/:id/modifier-dates', authClientMiddleware, async (req, r
         res.status(500).json({ message: 'Erreur serveur' });
     }
 });
-// Mettre à jour uniquement les champs mecanicien, dateHeureDebut et dateHeureFin dans les tâches
-
 router.put('/rendezvous/:id/taches', async (req, res) => {
+    console.log(req.body);
     try {
-        const { taches } = req.body;
+        const { taches, articlesUtilises } = req.body;
 
+        // Vérification de la validité des données des tâches
         if (!taches || !Array.isArray(taches)) {
             return res.status(400).json({ message: "Liste des tâches invalide." });
         }
 
-        // Mise à jour des tâches spécifiques du rendez-vous
+        // Récupérer le rendez-vous par ID
         const rendezVous = await RendezVous.findById(req.params.id);
         if (!rendezVous) {
             return res.status(404).json({ message: "Rendez-vous non trouvé." });
         }
 
+        // Mise à jour des tâches
         rendezVous.taches.forEach(tache => {
             const updatedTache = taches.find(t => t.tacheId.toString() === tache._id.toString());
             if (updatedTache) {
@@ -504,14 +506,91 @@ router.put('/rendezvous/:id/taches', async (req, res) => {
             }
         });
 
+        // Remplacer les articles utilisés dans le rendez-vous par ceux reçus
+        if (Array.isArray(articlesUtilises)) {
+            // On nettoie d'abord les articles existants dans le rendez-vous
+            rendezVous.articlesUtilises = [];
+
+            for (const updatedArticle of articlesUtilises) {
+                if (!updatedArticle.article) {
+                    console.warn("Article sans ID détecté :", updatedArticle);
+                    continue; // Ignore cet article et passe au suivant
+                }
+
+                // Vérifier si l'article a tous les champs requis
+                if (!updatedArticle.prixVente || !updatedArticle.prixAchat || !updatedArticle.fournisseur) {
+                    console.warn("Article incomplet détecté :", updatedArticle);
+                    continue; // Ignore cet article et passe au suivant
+                }
+
+                // Vérification de la validité des champs numériques
+                if (isNaN(updatedArticle.prixVente) || isNaN(updatedArticle.prixAchat) || isNaN(updatedArticle.quantite)) {
+                    console.warn("Prix ou quantité invalide pour l'article :", updatedArticle);
+                    continue; // Ignore cet article et passe au suivant
+                }
+
+                // Récupérer les détails de l'article depuis la collection Article
+                const articleDetails = await Article.findById(updatedArticle.article._id);
+                if (!articleDetails) {
+                    return res.status(400).json({ message: `Article avec ID ${updatedArticle.article} introuvable.` });
+                }
+
+                // Ajouter un nouvel article avec toutes les informations requises
+                rendezVous.articlesUtilises.push({
+                    article: articleDetails._id,
+                    quantite: updatedArticle.quantite,
+                    prixVente: updatedArticle.prixVente || articleDetails.prixVente,
+                    prixAchat: updatedArticle.prixAchat || articleDetails.prixAchat,
+                    fournisseur: updatedArticle.fournisseur || articleDetails.fournisseur
+                });
+            }
+        }
+
+        // Sauvegarder les modifications
         await rendezVous.save();
-        res.status(200).json({ message: "Tâches mises à jour avec succès", rendezVous });
+
+        res.status(200).json({ message: "Tâches et articles mis à jour avec succès", rendezVous });
 
     } catch (error) {
-        console.error("Erreur lors de la mise à jour des tâches :", error);
+        console.error("Erreur lors de la mise à jour des tâches et articles :", error);
         res.status(500).json({ message: "Erreur serveur", error });
     }
 });
 
+
+
+// ✅ Mise à jour du statut de la tâche avec vérification du mécanicien (PATCH)
+router.patch('/changesatuts/:id', authMecanicienMiddleware, async (req, res) => {
+    try {
+        const { tacheId, newStatus } = req.body;
+        
+        if (!['en attente', 'en cours', 'terminée'].includes(newStatus)) {
+            return res.status(400).json({ message: 'Statut invalide. Utilisez "en attente", "en cours" ou "terminée".' });
+        }
+
+        // Trouver le rendez-vous contenant la tâche
+        const rendezVous = await RendezVous.findOne({ _id: req.params.id, 'taches.tache': tacheId });
+
+        if (!rendezVous) {
+            return res.status(404).json({ message: 'Rendez-vous ou tâche non trouvée.' });
+        }
+
+        // Trouver la tâche spécifique
+        const tache = rendezVous.taches.find(t => t.tache.toString() === tacheId);
+
+        // Vérification que le mécanicien correspond
+        if (tache.mecanicien.toString() !== req.user.id) {
+            return res.status(403).json({ message: 'Vous n\'êtes pas autorisé à modifier cette tâche.' });
+        }
+
+        // Mise à jour du statut de la tâche
+        tache.statut = newStatus;
+        await rendezVous.save();  // Sauvegarde des modifications du rendez-vous
+
+        res.json({ message: 'Statut de la tâche mis à jour avec succès.', rendezVous });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
 
 module.exports = router;
