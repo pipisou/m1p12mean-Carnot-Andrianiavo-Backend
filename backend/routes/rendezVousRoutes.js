@@ -1,5 +1,8 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const fs = require('fs');
+const path = require('path');
+const PDFDocument = require('pdfkit'); // Assure-toi d'importer pdfkit
 const RendezVous = require('../models/RendezVous');
 const Client = require('../models/Client');
 const Devis = require('../models/Devis');
@@ -506,10 +509,10 @@ router.put('/rendezvous/:id/taches', async (req, res) => {
             }
         });
 
-        // Remplacer les articles utilisés dans le rendez-vous par ceux reçus
+        // Regroupement des articles avant ajout
         if (Array.isArray(articlesUtilises)) {
-            // On nettoie d'abord les articles existants dans le rendez-vous
-            rendezVous.articlesUtilises = [];
+            // Créer un objet pour regrouper les articles par leur clé unique
+            const articlesRegroupes = {};
 
             for (const updatedArticle of articlesUtilises) {
                 if (!updatedArticle.article) {
@@ -529,19 +532,43 @@ router.put('/rendezvous/:id/taches', async (req, res) => {
                     continue; // Ignore cet article et passe au suivant
                 }
 
+                // Créer une clé unique pour regrouper les articles : {ID, prixVente, prixAchat, fournisseur}
+                const key = `${updatedArticle.article._id}_${updatedArticle.prixVente}_${updatedArticle.prixAchat}_${updatedArticle.fournisseur}`;
+
+                // Si l'article existe déjà dans le regroupement, on cumule la quantité
+                if (articlesRegroupes[key]) {
+                    articlesRegroupes[key].quantite += updatedArticle.quantite;
+                } else {
+                    // Sinon, on l'ajoute au regroupement
+                    articlesRegroupes[key] = {
+                        article: updatedArticle.article,
+                        prixVente: updatedArticle.prixVente,
+                        prixAchat: updatedArticle.prixAchat,
+                        fournisseur: updatedArticle.fournisseur,
+                        quantite: updatedArticle.quantite
+                    };
+                }
+            }
+
+            // Maintenant, on va ajouter ces articles regroupés à `rendezVous.articlesUtilises`
+            rendezVous.articlesUtilises = []; // Réinitialiser les articles existants
+
+            for (const key in articlesRegroupes) {
+                const articleData = articlesRegroupes[key];
+
                 // Récupérer les détails de l'article depuis la collection Article
-                const articleDetails = await Article.findById(updatedArticle.article._id);
+                const articleDetails = await Article.findById(articleData.article._id);
                 if (!articleDetails) {
-                    return res.status(400).json({ message: `Article avec ID ${updatedArticle.article} introuvable.` });
+                    return res.status(400).json({ message: `Article avec ID ${articleData.article._id} introuvable.` });
                 }
 
-                // Ajouter un nouvel article avec toutes les informations requises
+                // Ajouter l'article regroupé au rendez-vous
                 rendezVous.articlesUtilises.push({
                     article: articleDetails._id,
-                    quantite: updatedArticle.quantite,
-                    prixVente: updatedArticle.prixVente || articleDetails.prixVente,
-                    prixAchat: updatedArticle.prixAchat || articleDetails.prixAchat,
-                    fournisseur: updatedArticle.fournisseur || articleDetails.fournisseur
+                    quantite: articleData.quantite,
+                    prixVente: articleData.prixVente || articleDetails.prixVente,
+                    prixAchat: articleData.prixAchat || articleDetails.prixAchat,
+                    fournisseur: articleData.fournisseur || articleDetails.fournisseur
                 });
             }
         }
@@ -556,6 +583,7 @@ router.put('/rendezvous/:id/taches', async (req, res) => {
         res.status(500).json({ message: "Erreur serveur", error });
     }
 });
+
 
 
 
@@ -592,5 +620,96 @@ router.patch('/changesatuts/:id', authMecanicienMiddleware, async (req, res) => 
         res.status(500).json({ message: error.message });
     }
 });
+
+router.get('/facture/:id', async (req, res) => {
+    try {
+        const rendezVous = await RendezVous.findById(req.params.id)
+            .populate('client') // Peupler le client
+            .populate({
+                path: 'devis', // Peupler les informations du devis
+                populate: [
+                    { 
+                        path: 'taches', // Peupler les tâches dans le devis
+                        populate: { 
+                            path: 'serviceDetails', // Peupler serviceDetails dans chaque tâche
+                            populate: { 
+                                path: 'service' // Peupler le service pour obtenir le nomService
+                            }
+                        }
+                    },
+                    { path: 'vehicule', populate: { path: 'categorie' } } // Peupler le véhicule et sa catégorie
+                ]
+            })
+            .populate({
+                path: 'taches', // Peupler les tâches du rendez-vous
+                populate: { 
+                    path: 'tache', // Peupler la tâche elle-même
+                    populate: { 
+                        path: 'serviceDetails', // Peupler serviceDetails
+                        populate: { 
+                            path: 'service' // Peupler le service pour obtenir nomService
+                        }
+                    }
+                }
+            })
+            .populate('articlesUtilises.article'); // Peupler les articles utilisés
+        
+        if (!rendezVous) {
+            return res.status(404).json({ message: 'Rendez-vous non trouvé' });
+        }
+
+        // 📄 Création du PDF en mémoire (pas de fichier temporaire)
+        const doc = new PDFDocument();
+        res.setHeader('Content-Disposition', `attachment; filename=facture_${rendezVous._id}.pdf`);
+        res.setHeader('Content-Type', 'application/pdf');
+
+        doc.pipe(res); // Envoi direct au client
+
+        // 📝 Contenu du PDF
+        doc.fontSize(20).text('Facture', { align: 'center' });
+        doc.moveDown();
+
+        doc.fontSize(12).text(`Client: ${rendezVous.client.nom}`);
+        doc.text(`Référence du devis: ${rendezVous.devis.referenceDevis}`);
+        
+        // Afficher l'immatriculation du véhicule
+        if (rendezVous.devis.vehicule) {
+            doc.text(`Véhicule: ${rendezVous.devis.vehicule.immatriculation}`);
+        }
+
+        doc.moveDown();
+
+        let total = 0;
+        doc.text('Tâches effectuées:', { underline: true });
+        rendezVous.taches.forEach((t) => {
+            doc.text(`${t.tache.description} - ${t.tache.serviceDetails.service.nomService} - ${t.tache.prix}€`);
+            total += t.tache.prix;
+        });
+        doc.moveDown();
+
+        doc.text('Articles utilisés:', { underline: true });
+        rendezVous.articlesUtilises.forEach((a) => {
+            doc.text(`${a.article.nomArticle} - ${a.quantite} x ${a.prixVente}€`);
+            total += a.quantite * a.prixVente;
+        });
+        doc.moveDown();
+
+        doc.fontSize(14).text(`Total à payer: ${total}€`, { align: 'right' });
+
+        // Ajouter une ligne sous le total à payer
+        doc.moveDown();
+        doc.lineWidth(0.5).moveTo(50, doc.y).lineTo(550, doc.y).stroke(); // Trace la ligne
+
+        // Afficher "Total du" avec la condition sur le statut du rendez-vous
+        const totalDu = rendezVous.statut === 'payé' ? '0 €' : `${total}€`;
+        doc.moveDown();
+        doc.text(`Total dû: ${totalDu}`, { align: 'right' });
+
+        doc.end(); // Terminer et envoyer le PDF
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 
 module.exports = router;
