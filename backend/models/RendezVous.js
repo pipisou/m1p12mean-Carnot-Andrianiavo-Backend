@@ -58,10 +58,24 @@ const rendezVousSchema = new mongoose.Schema({
         {
             article: { 
                 type: mongoose.Schema.Types.ObjectId, 
-                ref: 'Stock'
+                ref: 'Article',  // Référence vers Article au lieu de Stock
+                required: false 
             },
             quantite: { 
-                type: Number 
+                type: Number, 
+                required: false 
+            },
+            prixVente: { 
+                type: Number, 
+                required: false 
+            },
+            prixAchat: { 
+                type: Number, 
+                required: false  
+            },
+            fournisseur: { 
+                type: String, 
+                required: false  
             }
         }
     ],
