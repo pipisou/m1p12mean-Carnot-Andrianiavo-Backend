@@ -9,6 +9,8 @@ const Devis = require('../models/Devis');
 const Mecanicien = require('../models/Mecanicien');
 const Stock = require('../models/Stock');
 const Article = require('../models/Article');
+const PdfPrinter = require('pdfmake'); // Assurez-vous d'avoir installé pdfmake
+const vfsFonts = require('pdfmake/build/vfs_fonts');
 const { authMiddleware, authClientMiddleware,authMecanicienMiddleware } = require('../middlewares/authMiddleware');
 
 const router = express.Router();
@@ -620,96 +622,108 @@ router.patch('/changesatuts/:id', authMecanicienMiddleware, async (req, res) => 
         res.status(500).json({ message: error.message });
     }
 });
+const fonts = {
+    Helvetica: {
+        normal: 'Helvetica',
+        bold: 'Helvetica-Bold',
+        italics: 'Helvetica-Oblique',
+        bolditalics: 'Helvetica-BoldOblique'
+    }
+};
+
+const printer = new PdfPrinter(fonts);
 
 router.get('/facture/:id', async (req, res) => {
     try {
         const rendezVous = await RendezVous.findById(req.params.id)
-            .populate('client') // Peupler le client
+            .populate('client')
             .populate({
-                path: 'devis', // Peupler les informations du devis
+                path: 'devis',
                 populate: [
-                    { 
-                        path: 'taches', // Peupler les tâches dans le devis
-                        populate: { 
-                            path: 'serviceDetails', // Peupler serviceDetails dans chaque tâche
-                            populate: { 
-                                path: 'service' // Peupler le service pour obtenir le nomService
-                            }
-                        }
-                    },
-                    { path: 'vehicule', populate: { path: 'categorie' } } // Peupler le véhicule et sa catégorie
+                    { path: 'taches', populate: { path: 'serviceDetails', populate: { path: 'service' } } },
+                    { path: 'vehicule', populate: { path: 'categorie' } }
                 ]
             })
             .populate({
-                path: 'taches', // Peupler les tâches du rendez-vous
-                populate: { 
-                    path: 'tache', // Peupler la tâche elle-même
-                    populate: { 
-                        path: 'serviceDetails', // Peupler serviceDetails
-                        populate: { 
-                            path: 'service' // Peupler le service pour obtenir nomService
-                        }
-                    }
-                }
+                path: 'taches',
+                populate: { path: 'tache', populate: { path: 'serviceDetails', populate: { path: 'service' } } }
             })
-            .populate('articlesUtilises.article'); // Peupler les articles utilisés
-        
+            .populate('articlesUtilises.article');
+
         if (!rendezVous) {
             return res.status(404).json({ message: 'Rendez-vous non trouvé' });
         }
 
-        // 📄 Création du PDF en mémoire (pas de fichier temporaire)
-        const doc = new PDFDocument();
-        res.setHeader('Content-Disposition', `attachment; filename=facture_${rendezVous._id}.pdf`);
-        res.setHeader('Content-Type', 'application/pdf');
-
-        doc.pipe(res); // Envoi direct au client
-
-        // 📝 Contenu du PDF
-        doc.fontSize(20).text('Facture', { align: 'center' });
-        doc.moveDown();
-
-        doc.fontSize(12).text(`Client: ${rendezVous.client.nom}`);
-        doc.text(`Référence du devis: ${rendezVous.devis.referenceDevis}`);
-        
-        // Afficher l'immatriculation du véhicule
-        if (rendezVous.devis.vehicule) {
-            doc.text(`Véhicule: ${rendezVous.devis.vehicule.immatriculation}`);
-        }
-
-        doc.moveDown();
-
         let total = 0;
-        doc.text('Tâches effectuées:', { underline: true });
-        rendezVous.taches.forEach((t) => {
-            doc.text(`${t.tache.description} - ${t.tache.serviceDetails.service.nomService} - ${t.tache.prix}€`);
-            total += t.tache.prix;
-        });
-        doc.moveDown();
 
-        doc.text('Articles utilisés:', { underline: true });
-        rendezVous.articlesUtilises.forEach((a) => {
-            doc.text(`${a.article.nomArticle} - ${a.quantite} x ${a.prixVente}€`);
-            total += a.quantite * a.prixVente;
-        });
-        doc.moveDown();
+        const docDefinition = {
+            content: [
+                { text: 'Facture', fontSize: 20, alignment: 'center', bold: true },
+                { text: `Client: ${rendezVous.client.nom}`, fontSize: 12 },
+                { text: `Référence du devis: ${rendezVous.devis.referenceDevis}`, fontSize: 12 },
+                rendezVous.devis.vehicule ? { text: `Véhicule: ${rendezVous.devis.vehicule.immatriculation}`, fontSize: 12 } : {},
+                { text: 'Tâches effectuées:', fontSize: 14, bold: true, margin: [0, 20] },
+                {
+                    style: 'tableExample',
+                    table: {
+                        widths: ['40%', '30%', '30%'], // Ajuste les proportions des colonnes
+                        body: [
+                            [{ text: 'Description', bold: true }, { text: 'Service', bold: true, alignment: 'center' }, { text: 'Prix', bold: true, alignment: 'right' }],
+                            ...rendezVous.taches.map(t => {
+                                total += t.tache.prix;
+                                return [
+                                    t.tache.description,
+                                    { text: t.tache.serviceDetails.service.nomService, alignment: 'center' },
+                                    { text: `${t.tache.prix}€`, alignment: 'right' }
+                                ];
+                            })
+                        ]
+                    },
+                    layout: 'noBorders' // Supprime toutes les bordures
+                },
+                { text: 'Articles utilisés:', fontSize: 14, bold: true, margin: [0, 20] },
+                {
+                    style: 'tableExample',
+                    table: {
+                        widths: ['40%', '30%', '30%'],
+                        body: [
+                            [{ text: 'Article', bold: true }, { text: 'Quantité x Prix', bold: true, alignment: 'center' }, { text: 'Total', bold: true, alignment: 'right' }],
+                            ...rendezVous.articlesUtilises.map(a => {
+                                const articleTotal = a.quantite * a.prixVente;
+                                total += articleTotal;
+                                return [
+                                    a.article.nomArticle,
+                                    { text: `${a.quantite} x ${a.prixVente}€`, alignment: 'center' },
+                                    { text: `${articleTotal}€`, alignment: 'right' }
+                                ];
+                            })
+                        ]
+                    },
+                    layout: 'noBorders' // Supprime toutes les bordures
+                },
+                { text: `Total à payer: ${total}€`, alignment: 'right', fontSize: 16, margin: [0, 20] },
+                { text: `Total dû: ${rendezVous.statut === 'payé' ? '0 €' : `${total}€`}`, alignment: 'right', fontSize: 16 }
+            ],
+            styles: {
+                tableExample: {
+                    margin: [0, 5, 0, 15],
+                    fontSize: 10
+                }
+            },
+            defaultStyle: {
+                font: 'Helvetica'
+            }
+        };
+        
 
-        doc.fontSize(14).text(`Total à payer: ${total}€`, { align: 'right' });
+        const pdfDoc = printer.createPdfKitDocument(docDefinition);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'inline; filename=facture.pdf');
+        pdfDoc.pipe(res);
+        pdfDoc.end();
 
-        // Ajouter une ligne sous le total à payer
-        doc.moveDown();
-        doc.lineWidth(0.5).moveTo(50, doc.y).lineTo(550, doc.y).stroke(); // Trace la ligne
-
-        // Afficher "Total du" avec la condition sur le statut du rendez-vous
-        const totalDu = rendezVous.statut === 'payé' ? '0 €' : `${total}€`;
-        doc.moveDown();
-        doc.text(`Total dû: ${totalDu}`, { align: 'right' });
-
-        doc.end(); // Terminer et envoyer le PDF
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 });
-
-
 module.exports = router;
