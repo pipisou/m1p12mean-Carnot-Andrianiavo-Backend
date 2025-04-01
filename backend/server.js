@@ -38,6 +38,7 @@ app.use('/horaire', require('./routes/horaireRoutes'));
 app.use('/absence', require('./routes/absenceRoutes'));
 app.use('/categorieDeVehicule', require('./routes/categorieDeVehiculeRoutes'));
 app.use('/service-details', require('./routes/serviceDetailsRoutes'));
+app.use('/stats', require('./routes/statistiqueRoutes'));
 
 app.listen(PORT, () => console.log(`Serveur démarré sur le port 
 ${PORT}`));
