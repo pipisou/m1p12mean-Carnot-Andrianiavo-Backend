@@ -163,7 +163,30 @@ router.get('/absent', async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 });
+// ✅ Récupérer tous les rendez-vous marqués comme "Payer" (GET)
+router.get('/payer', async (req, res) => {
+    try {
+        const rendezVousPresents = await RendezVous.find({ statut: 'payé' })
+        .populate('client')
+        .populate({
+            path: 'devis',
+            populate: [
+                { path: 'taches' },
+                { 
+                    path: 'vehicule',
+                    populate: { path: 'categorie' }
+                }
+            ]
+        })
+        .populate('taches.tache')
+        .populate('taches.mecanicien')
+        .populate('articlesUtilises.article');
 
+        res.json(rendezVousPresents);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
 
 
 // ✅ Récupérer tous les rendez-vous d'un client (GET) - Protégé par authClientMiddleware
@@ -726,4 +749,10 @@ router.get('/facture/:id', async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 });
+function formatDateWithoutTimezone(date) {
+    // Vérifie si la date est au format ISO 8601 avec fuseau horaire
+    const isoDate = new Date(date);
+    // Retourne au format "YYYY-MM-DDTHH:mm"
+    return isoDate.toISOString().slice(0, 16);
+}
 module.exports = router;

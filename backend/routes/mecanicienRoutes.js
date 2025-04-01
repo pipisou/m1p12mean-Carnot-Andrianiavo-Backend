@@ -2,7 +2,7 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const Mecanicien = require('../models/Mecanicien');
-
+const { authClientMiddleware, authManagerMiddleware, authMecanicienMiddleware} = require('../middlewares/authMiddleware'); // Importation des middlewares
 const router = express.Router();
 
 // 🔹 Création d'un mécanicien
@@ -52,6 +52,46 @@ router.get('/', async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 });
+
+// Route de connexion - Pas besoin de token
+router.post('/login', async (req, res) => {
+    try {
+        const { email, motDePasse } = req.body;
+
+        // Vérifier si le mécanicien existe
+        const mecanicien = await Mecanicien.findOne({ email });
+        if (!mecanicien) {
+            return res.status(400).json({ error: "Email ou mot de passe incorrect" });
+        }
+
+        // Vérifier le mot de passe
+        const isMatch = await bcrypt.compare(motDePasse, mecanicien.motDePasse);
+        if (!isMatch) {
+            return res.status(400).json({ error: "Email ou mot de passe incorrect" });
+        }
+
+        // Générer un token JWT
+        const token = jwt.sign({ id: mecanicien._id }, process.env.JWT_SECRET, { expiresIn: "8h" });
+
+        res.json({ message: "Connexion réussie", token, mecanicien });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Route protégée - Nécessite un token mécanicien
+router.get('/me', authMecanicienMiddleware, async (req, res) => {
+    try {
+        const mecanicien = await Mecanicien.findById(req.user.id).select('-motDePasse'); // Exclure le mot de passe
+        if (!mecanicien) {
+            return res.status(404).json({ error: "Utilisateur non trouvé" });
+        }
+        res.json(mecanicien);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 
 // 🔹 Récupérer un mécanicien par ID avec le dernier horaire
 router.get('/:id', async (req, res) => {
