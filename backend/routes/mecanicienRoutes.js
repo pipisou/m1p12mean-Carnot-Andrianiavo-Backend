@@ -45,7 +45,7 @@ router.get('/', async (req, res) => {
                     sort: { createdAt: -1 },
                     limit: 1
                 }
-            });
+            }).populate('absences');
 
         res.json(mecaniciens);
     } catch (error) {
@@ -104,7 +104,7 @@ router.get('/:id', async (req, res) => {
                     sort: { createdAt: -1 },
                     limit: 1
                 }
-            });
+            }).populate('absences');
 
         if (!mecanicien) return res.status(404).send('Mécanicien non trouvé');
 

@@ -269,6 +269,34 @@ router.get('/client/valides', authClientMiddleware, async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 });
+router.get('/mecanicien/present', authMecanicienMiddleware, async (req, res) => {
+    try {
+        const mecanicienId = req.user.id; // Récupère l'ID du mécanicien depuis le token
+
+        const rendezVousMecanicien = await RendezVous.find({ 
+            'taches.mecanicien': mecanicienId, 
+            statut: 'présent' 
+        })
+        .populate('client')
+        .populate({
+            path: 'devis',
+            populate: [
+                { path: 'taches' },
+                { 
+                    path: 'vehicule',
+                    populate: { path: 'categorie' }
+                }
+            ]
+        })
+        .populate('taches.tache')
+        .populate('taches.mecanicien')
+        .populate('articlesUtilises.article');
+
+        res.json(rendezVousMecanicien); // Retourne le tableau (même s'il est vide)
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
 
 
 
