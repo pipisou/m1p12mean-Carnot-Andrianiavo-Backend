@@ -209,6 +209,41 @@ router.get('/payer', async (req, res) => {
     }
 });
 
+// ✅ Récupérer tous les rendez-vous marqués comme "Payé" ou "Présent" (GET)
+router.get('/payer-present', async (req, res) => {
+    try {
+        const rendezVousPresents = await RendezVous.find({ statut: { $in: ['payé', 'présent'] } })
+            .populate('client')
+            .populate({
+                path: 'devis',
+                populate: [
+                    { path: 'taches' }, // Peupler les tâches du devis
+                    {
+                        path: 'vehicule',
+                        populate: { path: 'categorie' } // Peupler la catégorie du véhicule
+                    }
+                ]
+            })
+            .populate({
+                path: 'taches',
+                populate: [
+                    { 
+                        path: 'tache', 
+                        populate: { 
+                            path: 'serviceDetails', 
+                            populate: { path: 'service' }  // Peupler "service" dans "serviceDetails"
+                        }
+                    },
+                    { path: 'mecanicien' } // Peupler mécanicien
+                ]
+            })
+            .populate('articlesUtilises.article');
+
+        res.json(rendezVousPresents);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
 
 // ✅ Récupérer tous les rendez-vous d'un client (GET) - Protégé par authClientMiddleware
 router.get('/client', authClientMiddleware, async (req, res) => {
@@ -301,7 +336,7 @@ router.get('/mecanicien/present', authMecanicienMiddleware, async (req, res) => 
 
         const rendezVousMecanicien = await RendezVous.find({ 
             'taches.mecanicien': mecanicienId, 
-            statut: 'présent' 
+            statut: { $in: ['présent', 'payé'] } // Filtrer sur les statuts "présent" et "payé"
         })
         .populate('client')
         .populate({
@@ -585,9 +620,9 @@ router.put('/rendezvous/:id/modifier-dates', authClientMiddleware, async (req, r
 });
 router.put('/rendezvous/:id/taches', async (req, res) => {
     try {
-        const { taches, articlesUtilises } = req.body;
+        const { taches } = req.body;
 
-        if (!taches || !Array.isArray(taches)) {
+        if (!taches ) {
             return res.status(400).json({ error: "Liste des tâches invalide." });
         }
 
@@ -597,8 +632,9 @@ router.put('/rendezvous/:id/taches', async (req, res) => {
         }
 
         for (const tache of rendezVous.taches) {
-            const updatedTache = taches.find(t => t.tacheId === tache.tache._id.toString());
+            const updatedTache = taches.tacheId === tache.tache._id.toString() ? taches : null;
 
+console.log(updatedTache);
             if (updatedTache) {
                 if (updatedTache.mecanicien) {
                     const mecanicien = await Mecanicien.findById(updatedTache.mecanicien)
@@ -612,7 +648,10 @@ router.put('/rendezvous/:id/taches', async (req, res) => {
                     const tacheDebut = new Date(updatedTache.dateHeureDebut);
                     const tacheFin = new Date(updatedTache.dateHeureFin);
                     let isAvailable = true;
-
+                    if (tacheFin <= tacheDebut) {
+                        return res.status(400).json({ error: "L'heure de fin doit être postérieure à l'heure de début." });
+                    }
+    
                     // Vérification des horaires du mécanicien
                     const jourTacheDebut = tacheDebut.toLocaleString('fr-FR', { weekday: 'long' }).toLowerCase();
                     const jourTacheFin = tacheFin.toLocaleString('fr-FR', { weekday: 'long' }).toLowerCase();
@@ -650,6 +689,7 @@ router.put('/rendezvous/:id/taches', async (req, res) => {
 
                     for (const rdv of rendezVousAvecTaches) {
                         for (const existingTask of rdv.taches) {
+                   
                             if (
                                 existingTask.tache._id.toString() !== updatedTache.tacheId.toString() &&
                                 existingTask.mecanicien.toString() === mecanicien._id.toString() &&
@@ -688,6 +728,34 @@ router.put('/rendezvous/:id/taches', async (req, res) => {
             }
         }
 
+
+
+        // Sauvegarde finale
+        await rendezVous.save();
+        res.status(200).json({ message: "Tâches et articles mis à jour avec succès", rendezVous });
+
+    } catch (error) {
+        console.error("Erreur lors de la mise à jour des tâches et articles :", error);
+        res.status(500).json({ error: "Erreur serveur", details: error.message });
+    }
+});
+
+
+
+
+
+
+router.put('/rendezvous/:id/articlesUtilises', async (req, res) => {
+    try {
+        const {articlesUtilises } = req.body;
+
+
+        const rendezVous = await RendezVous.findById(req.params.id);
+        if (!rendezVous) {
+            return res.status(404).json({ error: "Rendez-vous non trouvé." });
+        }
+
+        
         // Regroupement des articles utilisés
         if (Array.isArray(articlesUtilises)) {
             const articlesRegroupes = {};
@@ -740,6 +808,18 @@ router.put('/rendezvous/:id/taches', async (req, res) => {
         res.status(500).json({ error: "Erreur serveur", details: error.message });
     }
 });
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
