@@ -12,7 +12,7 @@ const Article = require('../models/Article');
 const PdfPrinter = require('pdfmake'); // Assurez-vous d'avoir installé pdfmake
 const vfsFonts = require('pdfmake/build/vfs_fonts');
 const { authMiddleware, authClientMiddleware,authMecanicienMiddleware } = require('../middlewares/authMiddleware');
-
+const Tache = require('../models/Tache');  
 const router = express.Router();
 
 // ✅ Création d'un rendez-vous (POST)
@@ -122,17 +122,27 @@ router.get('/present', async (req, res) => {
         .populate({
             path: 'devis',
             populate: [
-                { path: 'taches' },
-                { 
+                { path: 'taches' }, // Peupler les tâches du devis
+                {
                     path: 'vehicule',
-                    populate: { path: 'categorie' }
+                    populate: { path: 'categorie' } // Peupler la catégorie du véhicule
                 }
             ]
         })
-        .populate('taches.tache')
-        .populate('taches.mecanicien')
+        .populate({
+            path: 'taches',
+            populate: [
+                { 
+                    path: 'tache', 
+                    populate: { 
+                        path: 'serviceDetails', 
+                        populate: { path: 'service' }  // Ajouter cette ligne pour peupler le champ "service" dans "serviceDetails"
+                    }
+                },
+                { path: 'mecanicien' } // Peupler mécanicien
+            ]
+        })
         .populate('articlesUtilises.article');
-
         res.json(rendezVousPresents);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -171,15 +181,26 @@ router.get('/payer', async (req, res) => {
         .populate({
             path: 'devis',
             populate: [
-                { path: 'taches' },
-                { 
+                { path: 'taches' }, // Peupler les tâches du devis
+                {
                     path: 'vehicule',
-                    populate: { path: 'categorie' }
+                    populate: { path: 'categorie' } // Peupler la catégorie du véhicule
                 }
             ]
         })
-        .populate('taches.tache')
-        .populate('taches.mecanicien')
+        .populate({
+            path: 'taches',
+            populate: [
+                { 
+                    path: 'tache', 
+                    populate: { 
+                        path: 'serviceDetails', 
+                        populate: { path: 'service' }  // Ajouter cette ligne pour peupler le champ "service" dans "serviceDetails"
+                    }
+                },
+                { path: 'mecanicien' } // Peupler mécanicien
+            ]
+        })
         .populate('articlesUtilises.article');
 
         res.json(rendezVousPresents);
@@ -253,15 +274,20 @@ router.get('/client/valides', authClientMiddleware, async (req, res) => {
         .populate({
             path: 'devis',
             populate: [
-                { path: 'taches' },   // Peupler les tâches du devis
-                { 
+                { path: 'taches' }, // Peupler les tâches du devis
+                {
                     path: 'vehicule',
-                    populate: { path: 'categorie' }  // Peupler la catégorie du véhicule
+                    populate: { path: 'categorie' } // Peupler la catégorie du véhicule
                 }
             ]
         })
-        .populate('taches.tache')
-        .populate('taches.mecanicien')
+        .populate({
+            path: 'taches',
+            populate: [
+                { path: 'tache', populate: { path: 'serviceDetails' } }, // Peupler serviceDetails dans tache
+                { path: 'mecanicien' } // Peupler mécanicien
+            ]
+        })
         .populate('articlesUtilises.article');
 
         res.json(rendezVousValidés); // Retourne le tableau (même s'il est vide)
@@ -281,15 +307,20 @@ router.get('/mecanicien/present', authMecanicienMiddleware, async (req, res) => 
         .populate({
             path: 'devis',
             populate: [
-                { path: 'taches' },
-                { 
+                { path: 'taches' }, // Peupler les tâches du devis
+                {
                     path: 'vehicule',
-                    populate: { path: 'categorie' }
+                    populate: { path: 'categorie' } // Peupler la catégorie du véhicule
                 }
             ]
         })
-        .populate('taches.tache')
-        .populate('taches.mecanicien')
+        .populate({
+            path: 'taches',
+            populate: [
+                { path: 'tache', populate: { path: 'serviceDetails' } }, // Peupler serviceDetails dans tache
+                { path: 'mecanicien' } // Peupler mécanicien
+            ]
+        })
         .populate('articlesUtilises.article');
 
         res.json(rendezVousMecanicien); // Retourne le tableau (même s'il est vide)
@@ -310,15 +341,20 @@ router.get('/client/present', authClientMiddleware, async (req, res) => {
         .populate({
             path: 'devis',
             populate: [
-                { path: 'taches' },
-                { 
+                { path: 'taches' }, // Peupler les tâches du devis
+                {
                     path: 'vehicule',
-                    populate: { path: 'categorie' }
+                    populate: { path: 'categorie' } // Peupler la catégorie du véhicule
                 }
             ]
         })
-        .populate('taches.tache')
-        .populate('taches.mecanicien')
+        .populate({
+            path: 'taches',
+            populate: [
+                { path: 'tache', populate: { path: 'serviceDetails' } }, // Peupler serviceDetails dans tache
+                { path: 'mecanicien' } // Peupler mécanicien
+            ]
+        })
         .populate('articlesUtilises.article');
 
         res.json(rendezVousPresents); // Retourne le tableau (même s'il est vide)
@@ -359,20 +395,31 @@ router.get('/client/absent', authClientMiddleware, async (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
         const rendezVous = await RendezVous.findById(req.params.id)
-            .populate('client')
-            .populate({
-                path: 'devis',
-                populate: [
-                    { path: 'taches' }, // Peupler les tâches du devis
-                    {
-                        path: 'vehicule',
-                        populate: { path: 'categorie' } // Peupler la catégorie du véhicule
+        .populate('client')
+        .populate({
+            path: 'devis',
+            populate: [
+                { path: 'taches' }, // Peupler les tâches du devis
+                {
+                    path: 'vehicule',
+                    populate: { path: 'categorie' } // Peupler la catégorie du véhicule
+                }
+            ]
+        })
+        .populate({
+            path: 'taches',
+            populate: [
+                { 
+                    path: 'tache', 
+                    populate: { 
+                        path: 'serviceDetails', 
+                        populate: { path: 'service' }  // Ajouter cette ligne pour peupler le champ "service" dans "serviceDetails"
                     }
-                ]
-            })
-            .populate('taches.tache')
-            .populate('taches.mecanicien')
-            .populate('articlesUtilises.article');
+                },
+                { path: 'mecanicien' } // Peupler mécanicien
+            ]
+        })
+        .populate('articlesUtilises.article');
 
         if (!rendezVous) return res.status(404).json({ message: 'Rendez-vous non trouvé' });
 
@@ -537,106 +584,162 @@ router.put('/rendezvous/:id/modifier-dates', authClientMiddleware, async (req, r
     }
 });
 router.put('/rendezvous/:id/taches', async (req, res) => {
-    console.log(req.body);
     try {
         const { taches, articlesUtilises } = req.body;
 
-        // Vérification de la validité des données des tâches
         if (!taches || !Array.isArray(taches)) {
-            return res.status(400).json({ message: "Liste des tâches invalide." });
+            return res.status(400).json({ error: "Liste des tâches invalide." });
         }
 
-        // Récupérer le rendez-vous par ID
         const rendezVous = await RendezVous.findById(req.params.id);
         if (!rendezVous) {
-            return res.status(404).json({ message: "Rendez-vous non trouvé." });
+            return res.status(404).json({ error: "Rendez-vous non trouvé." });
         }
 
-        // Mise à jour des tâches
-        rendezVous.taches.forEach(tache => {
-            const updatedTache = taches.find(t => t.tacheId.toString() === tache._id.toString());
-            if (updatedTache) {
-                if (updatedTache.mecanicien) tache.mecanicien = updatedTache.mecanicien;
-                if (updatedTache.dateHeureDebut) tache.dateHeureDebut = updatedTache.dateHeureDebut;
-                if (updatedTache.dateHeureFin) tache.dateHeureFin = updatedTache.dateHeureFin;
-            }
-        });
+        for (const tache of rendezVous.taches) {
+            const updatedTache = taches.find(t => t.tacheId === tache.tache._id.toString());
 
-        // Regroupement des articles avant ajout
+            if (updatedTache) {
+                if (updatedTache.mecanicien) {
+                    const mecanicien = await Mecanicien.findById(updatedTache.mecanicien)
+                        .populate('horaire')
+                        .populate('absences');
+
+                    if (!mecanicien) {
+                        return res.status(404).json({ error: 'Mécanicien non trouvé.' });
+                    }
+
+                    const tacheDebut = new Date(updatedTache.dateHeureDebut);
+                    const tacheFin = new Date(updatedTache.dateHeureFin);
+                    let isAvailable = true;
+
+                    // Vérification des horaires du mécanicien
+                    const jourTacheDebut = tacheDebut.toLocaleString('fr-FR', { weekday: 'long' }).toLowerCase();
+                    const jourTacheFin = tacheFin.toLocaleString('fr-FR', { weekday: 'long' }).toLowerCase();
+
+                    const horaireDebutJour = mecanicien.horaire.joursTravail.find(jour => jour.jour.toLowerCase() === jourTacheDebut);
+                    const horaireFinJour = mecanicien.horaire.joursTravail.find(jour => jour.jour.toLowerCase() === jourTacheFin);
+
+                    if (!horaireDebutJour || !horaireFinJour) {
+                        return res.status(400).json({ error: "Le mécanicien ne travaille pas ce jour-là." });
+                    }
+
+                    const [heureDebut, minuteDebut] = horaireDebutJour.debut.split(':').map(Number);
+                    const [heureFin, minuteFin] = horaireFinJour.fin.split(':').map(Number);
+
+                    if (tacheDebut.getUTCHours() < heureDebut || tacheFin.getUTCHours() > heureFin) {
+                        return res.status(400).json({ error: "La tâche dépasse les horaires de travail du mécanicien." });
+                    }
+
+                    // Vérification des absences
+                    const dateTache = tacheDebut.toISOString().split('T')[0];
+                    const absence = mecanicien.absences.find(abs => {
+                        const dateAbsence = new Date(abs.date).toISOString().split('T')[0];
+                        return dateAbsence === dateTache;
+                    });
+
+                    if (absence) {
+                        return res.status(400).json({ error: "Le mécanicien est en congé ou absent ce jour-là." });
+                    }
+
+                    // Vérification de chevauchement avec d'autres tâches
+                    const rendezVousAvecTaches = await RendezVous.find({
+                        statut: 'présent',
+                        'taches.mecanicien': mecanicien._id
+                    }).select('taches');
+
+                    for (const rdv of rendezVousAvecTaches) {
+                        for (const existingTask of rdv.taches) {
+                            if (
+                                existingTask.tache._id.toString() !== updatedTache.tacheId.toString() &&
+                                existingTask.mecanicien.toString() === mecanicien._id.toString() &&
+                                tacheDebut < existingTask.dateHeureFin &&
+                                tacheFin > existingTask.dateHeureDebut
+                            ) {
+                                return res.status(400).json({
+                                    error: "Le mécanicien est déjà occupé sur une autre tâche durant cette période."
+                                });
+                            }
+                        }
+                    }
+
+                    // Vérification du temps estimé + marge
+                    const tachex = await Tache.findById(updatedTache.tacheId);
+                    if (!tachex) {
+                        return res.status(404).json({ error: "Tâche non trouvée." });
+                    }
+
+                    const tempsEstime = parseFloat(tachex.tempsEstime || 0);
+                    const marge = parseFloat(tachex.marge || 0);
+                    const dureeReelle = (tacheFin - tacheDebut) / 60000;
+                    const dureeNecessaire = tempsEstime + marge;
+
+                    if (dureeReelle < dureeNecessaire) {
+                        return res.status(400).json({
+                            error: "La durée de la tâche est trop courte par rapport au temps estimé et à la marge."
+                        });
+                    }
+
+                    // Mise à jour de la tâche
+                    tache.mecanicien = updatedTache.mecanicien;
+                    tache.dateHeureDebut = updatedTache.dateHeureDebut;
+                    tache.dateHeureFin = updatedTache.dateHeureFin;
+                }
+            }
+        }
+
+        // Regroupement des articles utilisés
         if (Array.isArray(articlesUtilises)) {
-            // Créer un objet pour regrouper les articles par leur clé unique
             const articlesRegroupes = {};
 
             for (const updatedArticle of articlesUtilises) {
                 if (!updatedArticle.article) {
-                    console.warn("Article sans ID détecté :", updatedArticle);
-                    continue; // Ignore cet article et passe au suivant
+                    return res.status(400).json({ error: "Un article utilisé ne contient pas d'ID valide." });
                 }
 
-                // Vérifier si l'article a tous les champs requis
                 if (!updatedArticle.prixVente || !updatedArticle.prixAchat || !updatedArticle.fournisseur) {
-                    console.warn("Article incomplet détecté :", updatedArticle);
-                    continue; // Ignore cet article et passe au suivant
+                    return res.status(400).json({ error: "Un article est incomplet : prix de vente, prix d'achat ou fournisseur manquant." });
                 }
 
-                // Vérification de la validité des champs numériques
                 if (isNaN(updatedArticle.prixVente) || isNaN(updatedArticle.prixAchat) || isNaN(updatedArticle.quantite)) {
-                    console.warn("Prix ou quantité invalide pour l'article :", updatedArticle);
-                    continue; // Ignore cet article et passe au suivant
+                    return res.status(400).json({ error: "Prix ou quantité invalide pour un article utilisé." });
                 }
 
-                // Créer une clé unique pour regrouper les articles : {ID, prixVente, prixAchat, fournisseur}
                 const key = `${updatedArticle.article._id}_${updatedArticle.prixVente}_${updatedArticle.prixAchat}_${updatedArticle.fournisseur}`;
-
-                // Si l'article existe déjà dans le regroupement, on cumule la quantité
                 if (articlesRegroupes[key]) {
                     articlesRegroupes[key].quantite += updatedArticle.quantite;
                 } else {
-                    // Sinon, on l'ajoute au regroupement
-                    articlesRegroupes[key] = {
-                        article: updatedArticle.article,
-                        prixVente: updatedArticle.prixVente,
-                        prixAchat: updatedArticle.prixAchat,
-                        fournisseur: updatedArticle.fournisseur,
-                        quantite: updatedArticle.quantite
-                    };
+                    articlesRegroupes[key] = { ...updatedArticle };
                 }
             }
 
-            // Maintenant, on va ajouter ces articles regroupés à `rendezVous.articlesUtilises`
-            rendezVous.articlesUtilises = []; // Réinitialiser les articles existants
-
+            rendezVous.articlesUtilises = [];
             for (const key in articlesRegroupes) {
                 const articleData = articlesRegroupes[key];
-
-                // Récupérer les détails de l'article depuis la collection Article
                 const articleDetails = await Article.findById(articleData.article._id);
                 if (!articleDetails) {
-                    return res.status(400).json({ message: `Article avec ID ${articleData.article._id} introuvable.` });
+                    return res.status(400).json({ error: `Article avec ID ${articleData.article._id} introuvable.` });
                 }
 
-                // Ajouter l'article regroupé au rendez-vous
                 rendezVous.articlesUtilises.push({
                     article: articleDetails._id,
                     quantite: articleData.quantite,
-                    prixVente: articleData.prixVente || articleDetails.prixVente,
-                    prixAchat: articleData.prixAchat || articleDetails.prixAchat,
-                    fournisseur: articleData.fournisseur || articleDetails.fournisseur
+                    prixVente: articleData.prixVente,
+                    prixAchat: articleData.prixAchat,
+                    fournisseur: articleData.fournisseur
                 });
             }
         }
 
-        // Sauvegarder les modifications
+        // Sauvegarde finale
         await rendezVous.save();
-
         res.status(200).json({ message: "Tâches et articles mis à jour avec succès", rendezVous });
 
     } catch (error) {
         console.error("Erreur lors de la mise à jour des tâches et articles :", error);
-        res.status(500).json({ message: "Erreur serveur", error });
+        res.status(500).json({ error: "Erreur serveur", details: error.message });
     }
 });
-
 
 
 
