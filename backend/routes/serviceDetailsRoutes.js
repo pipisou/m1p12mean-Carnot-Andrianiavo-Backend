@@ -108,15 +108,13 @@ router.get('/alltaches/:id', async (req, res) => {
             .populate('serviceDetails')  // Peupler les détails du service
             .populate('articlesNecessaires.article');  // Peupler les articles nécessaires
 
-        if (taches.length === 0) {
-            return res.status(404).json({ message: 'Aucune tâche trouvée pour ce ServiceDetails' });
-        }
-
+        // Retourner un tableau vide si aucune tâche n'est trouvée
         res.json(taches);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 });
+
 
 // ✅ Récupérer les ServiceDetails par catégorie de véhicule (GET)
 router.get('/categorie/:categorieId',  async (req, res) => {
