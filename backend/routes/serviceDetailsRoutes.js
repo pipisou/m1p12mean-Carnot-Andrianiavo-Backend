@@ -118,6 +118,7 @@ router.get('/alltaches/:id', async (req, res) => {
 
 // ✅ Récupérer les ServiceDetails par catégorie de véhicule (GET)
 router.get('/categorie/:categorieId',  async (req, res) => {
+    console.log(req.params.categorieId);
     try {
         const serviceDetails = await ServiceDetails.find({ categorieDeVehicule: req.params.categorieId })
             .populate('service')

@@ -128,7 +128,13 @@ router.get('/:id', async (req, res) => {
         const devis = await Devis.findById(req.params.id)
             .populate('client')
             .populate('taches')
-            .populate('vehicule');  // Peupler le véhicule lié au devis
+            .populate({
+                path: 'vehicule',
+                populate: [
+                    { path: 'categorie' }
+                ]
+            });  // Peupler le véhicule lié au devis
+          
 
         if (!devis) return res.status(404).json({ message: 'Devis non trouvé' });
 
