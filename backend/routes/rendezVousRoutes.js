@@ -81,7 +81,8 @@ router.get('/en-attente', async (req, res) => {
         })
         .populate('taches.tache')
         .populate('taches.mecanicien')
-        .populate('articlesUtilises.article');
+        .populate('articlesUtilises.article')
+        .sort({ 'devis.referenceDevis': -1 });  // Tri par referenceDevis décroissant
 
         res.json(rendezVousEnAttente);
     } catch (error) {
@@ -106,7 +107,8 @@ router.get('/valides', async (req, res) => {
         })
         .populate('taches.tache')
         .populate('taches.mecanicien')
-        .populate('articlesUtilises.article');
+        .populate('articlesUtilises.article')
+        .sort({ 'devis.referenceDevis': -1 });  // Tri par referenceDevis décroissant
 
         res.json(rendezVousValides);
     } catch (error) {
@@ -142,7 +144,8 @@ router.get('/present', async (req, res) => {
                 { path: 'mecanicien' } // Peupler mécanicien
             ]
         })
-        .populate('articlesUtilises.article');
+        .populate('articlesUtilises.article')
+        .sort({ 'devis.referenceDevis': -1 });  
         res.json(rendezVousPresents);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -166,7 +169,8 @@ router.get('/absent', async (req, res) => {
         })
         .populate('taches.tache')
         .populate('taches.mecanicien')
-        .populate('articlesUtilises.article');
+        .populate('articlesUtilises.article')
+        .sort({ 'devis.referenceDevis': -1 });  
 
         res.json(rendezVousAbsents);
     } catch (error) {
@@ -201,7 +205,8 @@ router.get('/payer', async (req, res) => {
                 { path: 'mecanicien' } // Peupler mécanicien
             ]
         })
-        .populate('articlesUtilises.article');
+        .populate('articlesUtilises.article')
+        .sort({ 'devis.referenceDevis': -1 });  
 
         res.json(rendezVousPresents);
     } catch (error) {
@@ -237,7 +242,8 @@ router.get('/payer-present', async (req, res) => {
                     { path: 'mecanicien' } // Peupler mécanicien
                 ]
             })
-            .populate('articlesUtilises.article');
+            .populate('articlesUtilises.article')
+            .sort({ 'devis.referenceDevis': -1 });  
 
         res.json(rendezVousPresents);
     } catch (error) {
@@ -264,7 +270,8 @@ router.get('/client', authClientMiddleware, async (req, res) => {
         })
         .populate('taches.tache')
         .populate('taches.mecanicien')
-        .populate('articlesUtilises.article');
+        .populate('articlesUtilises.article')
+        .sort({ 'devis.referenceDevis': -1 });  
 
         res.json(rendezVous); // Retourne le tableau (même s'il est vide)
     } catch (error) {
@@ -292,7 +299,8 @@ router.get('/client/en-attente', authClientMiddleware, async (req, res) => {
         })
         .populate('taches.tache')
         .populate('taches.mecanicien')
-        .populate('articlesUtilises.article');
+        .populate('articlesUtilises.article')
+        .sort({ 'devis.referenceDevis': -1 });  
         res.json(rendezVousEnAttente); // Retourne le tableau (même s'il est vide)
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -323,7 +331,8 @@ router.get('/client/valides', authClientMiddleware, async (req, res) => {
                 { path: 'mecanicien' } // Peupler mécanicien
             ]
         })
-        .populate('articlesUtilises.article');
+        .populate('articlesUtilises.article')
+        .sort({ 'devis.referenceDevis': -1 });  
 
         res.json(rendezVousValidés); // Retourne le tableau (même s'il est vide)
     } catch (error) {
@@ -356,7 +365,8 @@ router.get('/mecanicien/present', authMecanicienMiddleware, async (req, res) => 
                 { path: 'mecanicien' } // Peupler mécanicien
             ]
         })
-        .populate('articlesUtilises.article');
+        .populate('articlesUtilises.article')
+        .sort({ 'devis.referenceDevis': -1 });  
 
         res.json(rendezVousMecanicien); // Retourne le tableau (même s'il est vide)
     } catch (error) {
@@ -908,7 +918,12 @@ router.get('/facture/:id', async (req, res) => {
                                 return [
                                     t.tache.description,
                                     { text: t.tache.serviceDetails.service.nomService, alignment: 'center' },
-                                    { text: `${t.tache.prix}€`, alignment: 'right' }
+                                    {
+                                        text: `${t.tache.prix.toLocaleString('en-US').replace(/,/g, ' ')} MGA`,
+                                        alignment: 'right'
+                                      }
+                                      
+                                      
                                 ];
                             })
                         ]
@@ -927,16 +942,40 @@ router.get('/facture/:id', async (req, res) => {
                                 total += articleTotal;
                                 return [
                                     a.article.nomArticle,
-                                    { text: `${a.quantite} x ${a.prixVente}€`, alignment: 'center' },
-                                    { text: `${articleTotal}€`, alignment: 'right' }
+                                    {
+                                        text: `${a.quantite} x ${a.prixVente.toLocaleString('en-US').replace(/,/g, ' ')} MGA`,
+                                        alignment: 'center'
+                                      }
+                                      ,
+                                      {
+                                        text: `${articleTotal.toLocaleString('en-US').replace(/,/g, ' ')} MGA`,
+                                        alignment: 'right'
+                                      }
+                                      
+                                      
                                 ];
                             })
                         ]
                     },
                     layout: 'noBorders' // Supprime toutes les bordures
                 },
-                { text: `Total à payer: ${total}€`, alignment: 'right', fontSize: 16, margin: [0, 20] },
-                { text: `Total dû: ${rendezVous.statut === 'payé' ? '0 €' : `${total}€`}`, alignment: 'right', fontSize: 16 }
+                { 
+                    text: `Total à payer: ${total.toLocaleString('en-US').replace(/,/g, ' ')} MGA`, 
+                    alignment: 'right', 
+                    fontSize: 16, 
+                    margin: [0, 20] 
+                  }
+                  
+                  
+                  ,
+                  { 
+                    text: `Total dû: ${rendezVous.statut === 'payé' ? '0 MGA' : `${total.toLocaleString('en-US').replace(/,/g, ' ')} MGA`}`, 
+                    alignment: 'right', 
+                    fontSize: 16 
+                  }
+                  
+                  
+                  
             ],
             styles: {
                 tableExample: {
